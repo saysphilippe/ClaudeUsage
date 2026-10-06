@@ -4,6 +4,7 @@ A small always-on-top Windows desktop widget that shows how much of your Claude 
 
 - **5-hour session** – tokens used in the current 5-hour window, how much is left, and when it resets
 - **Last 7 days** – tokens used over the past week
+- **History tab** – charts of tokens per day (7, 30 or 90 days) and today by hour, plus your most-used models and projects
 
 It reads the local Claude Code logs in `%USERPROFILE%\.claude\projects`. Nothing is sent anywhere, and no API key or login is needed.
 
@@ -59,7 +60,16 @@ Running the installer again updates the widget and keeps your settings (limits, 
 ## Using the widget
 
 - **Move it:** drag it with the left mouse button.
+- **Switch view:** click **Now** or **History** in the top-right corner.
 - **Options:** right-click it.
+
+### History tab
+
+- **Tokens per day:** choose **7d**, **30d** or **90d**. Hover over a bar to see the date and exact amount. Today's bar is lighter.
+- **Today by hour:** shows when you used Claude today. The current hour is lighter.
+- **Models** and **Top projects:** the share of tokens per model (for example Opus 5.5 and Sonnet 5.5) and per project folder over the selected period.
+
+Claude Code deletes its own logs after 30 days by default. The widget therefore keeps a daily summary in `%LOCALAPPDATA%\ClaudeUsage\history.json`, so the history keeps growing beyond that. It only covers the time since you installed the widget, plus whatever logs Claude Code still had at that point.
 
 | Menu item | What it does |
 |---|---|
@@ -70,7 +80,7 @@ Running the installer again updates the widget and keeps your settings (limits, 
 | Language | Switches between English, Norsk, Svenska and Dansk immediately |
 | Close | Closes the widget until next login or until you start it from the Desktop shortcut |
 
-Settings are saved in `%LOCALAPPDATA%\ClaudeUsage\config.json`.
+Settings are saved in `%LOCALAPPDATA%\ClaudeUsage\config.json`. Reinstalling keeps both your settings and your history.
 
 > The percentages are estimates based on your local logs. Calibrate them against `/usage` for the best accuracy.
 
@@ -82,4 +92,4 @@ Double-click [`Uninstall.cmd`](Uninstall.cmd), or run:
 powershell -NoProfile -ExecutionPolicy Bypass -File "$env:LOCALAPPDATA\ClaudeUsage\uninstall.ps1"
 ```
 
-This stops the widget and removes its files, shortcuts and settings.
+This stops the widget and removes its files, shortcuts, settings and saved history.
