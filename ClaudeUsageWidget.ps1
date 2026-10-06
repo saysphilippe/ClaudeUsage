@@ -35,6 +35,7 @@ $strings = @{
         cResetFirst = ' The session resets first, in {0}.'; cOverIdle = 'Over the limit – new messages use credits.'
         cStopped = 'Credit limit reached – Claude stops until the {0} resets.'
         cForecast = 'Forecast for this period: {0}'; cSession = 'session'; cWeek = 'weekly limit'
+        cTooHigh = 'Claude is still answering, so the estimate is too high. Enter the amount from claude.ai (right-click → Extra credits) and calibrate the limits from /usage.'
         calHint = 'The limits are not calibrated, so the credit estimate may be wrong. Right-click → Calibrate from /usage.'
         mCredit = 'Extra credits'; mCreditLimit = 'Set credit limit (USD)…'; mCreditSpent = 'Enter credits used from claude.ai…'; mCreditDay = 'Credit reset day…'
         askCreditLimit = 'Your monthly limit for extra credits in USD (0 hides the section):'
@@ -61,6 +62,7 @@ $strings = @{
         cResetFirst = ' Økten nullstilles før det, om {0}.'; cOverIdle = 'Over grensen – nye meldinger trekker kreditter.'
         cStopped = 'Kredittgrensen er nådd – Claude stopper til {0} nullstilles.'
         cForecast = 'Prognose for perioden: {0}'; cSession = 'økten'; cWeek = 'ukegrensen'
+        cTooHigh = 'Claude svarer fortsatt, så anslaget er for høyt. Registrer beløpet fra claude.ai (høyreklikk → Ekstra kreditter) og kalibrer grensene fra /usage.'
         calHint = 'Grensene er ikke kalibrert, så kreditt-anslaget kan bli feil. Høyreklikk → Kalibrer fra /usage.'
         mCredit = 'Ekstra kreditter'; mCreditLimit = 'Angi kredittgrense (USD)…'; mCreditSpent = 'Angi brukte kreditter fra claude.ai…'; mCreditDay = 'Dag kredittene nullstilles…'
         askCreditLimit = 'Månedlig grense for ekstra kreditter i USD (0 skjuler seksjonen):'
@@ -87,6 +89,7 @@ $strings = @{
         cResetFirst = ' Sessionen nollställs innan dess, om {0}.'; cOverIdle = 'Över gränsen – nya meddelanden drar krediter.'
         cStopped = 'Kreditgränsen är nådd – Claude stoppar tills {0} nollställs.'
         cForecast = 'Prognos för perioden: {0}'; cSession = 'sessionen'; cWeek = 'veckogränsen'
+        cTooHigh = 'Claude svarar fortfarande, så uppskattningen är för hög. Ange beloppet från claude.ai (högerklicka → Extra krediter) och kalibrera gränserna från /usage.'
         calHint = 'Gränserna är inte kalibrerade, så kreditberäkningen kan bli fel. Högerklicka → Kalibrera från /usage.'
         mCredit = 'Extra krediter'; mCreditLimit = 'Ange kreditgräns (USD)…'; mCreditSpent = 'Ange använda krediter från claude.ai…'; mCreditDay = 'Dag krediterna nollställs…'
         askCreditLimit = 'Månadsgräns för extra krediter i USD (0 döljer avsnittet):'
@@ -113,6 +116,7 @@ $strings = @{
         cResetFirst = ' Sessionen nulstilles før, om {0}.'; cOverIdle = 'Over grænsen – nye beskeder trækker kreditter.'
         cStopped = 'Kreditgrænsen er nået – Claude stopper, til {0} nulstilles.'
         cForecast = 'Prognose for perioden: {0}'; cSession = 'sessionen'; cWeek = 'ugegrænsen'
+        cTooHigh = 'Claude svarer stadig, så overslaget er for højt. Angiv beløbet fra claude.ai (højreklik → Ekstra kreditter) og kalibrér grænserne fra /usage.'
         calHint = 'Grænserne er ikke kalibreret, så kreditoverslaget kan være forkert. Højreklik → Kalibrér fra /usage.'
         mCredit = 'Ekstra kreditter'; mCreditLimit = 'Angiv kreditgrænse (USD)…'; mCreditSpent = 'Angiv brugte kreditter fra claude.ai…'; mCreditDay = 'Dag kreditterne nulstilles…'
         askCreditLimit = 'Månedlig grænse for ekstra kreditter i USD (0 skjuler afsnittet):'
@@ -215,7 +219,11 @@ function Get-Credit($all) {
     $baseAt = $null
     if ($cfg.creditBaseAt) { $baseAt = [datetime]::Parse($cfg.creditBaseAt, $inv, 'RoundtripKind').ToUniversalTime(); if ($baseAt -lt $startU) { $baseAt = $null } }
     $items = @($all | Where-Object { $_.t -ge $startU.AddDays(-7) })
-    $wStart = $null; $wTok = 0; $weekTok = 0; $q = 0; $spent = 0.0; $lastHour = 0.0
+    $wStart = $null; $wTok = 0; $weekTok = 0; $q = 0; $lastHour = 0.0
+    $spent = if ($baseAt) { [double]$cfg.creditBase } else { 0.0 }
+    # Claude stops once the credit limit is reached. Messages over the limit after the estimate
+    # has passed it prove the estimate is too high (usually because the limits are not calibrated).
+    $crossed = $spent -ge [double]$cfg.creditLimit; $afterCap = 0
     foreach ($i in $items) {
         if (-not $wStart -or $i.t -ge $wStart.AddHours(5)) { $wStart = $i.t; $wTok = 0 }
         while ($items[$q].t -lt $i.t.AddDays(-7)) { $weekTok -= $items[$q].n; $q++ }
@@ -223,12 +231,14 @@ function Get-Credit($all) {
         $wTok += $i.n; $weekTok += $i.n
         if (-not $extra -or $i.t -lt $startU) { continue }
         if ($i.t -ge $nowU.AddHours(-1)) { $lastHour += $i.cost }
-        if (-not $baseAt -or $i.t -gt $baseAt) { $spent += $i.cost }
+        if ($baseAt -and $i.t -le $baseAt) { continue }
+        if ($crossed) { $afterCap++ }
+        $spent += $i.cost
+        if ($spent -ge [double]$cfg.creditLimit) { $crossed = $true }
     }
-    if ($baseAt) { $spent += [double]$cfg.creditBase }
     $elapsed = ((Get-Date) - $per.start).TotalDays; $length = ($per.end - $per.start).TotalDays
     $forecast = if ($elapsed -ge 1) { $spent * $length / $elapsed } else { $spent }
-    [pscustomobject]@{ spent = $spent; perHour = $lastHour; forecast = $forecast; end = $per.end }
+    [pscustomobject]@{ spent = $spent; perHour = $lastHour; forecast = $forecast; end = $per.end; estimated = -not $baseAt; tooHigh = $afterCap -ge 3 }
 }
 
 # Exchange rates from Norges Bank, fetched once a day. The download runs as a .NET task and
@@ -520,10 +530,11 @@ function Set-Meter($label, $bar, $sub, $text, $pct, $color) {
 }
 function Draw-Credit($c, $u) {
     $limit = [double]$cfg.creditLimit; $spent = $c.spent; $left = [math]::Max(0.0, $limit - $spent); $frac = $spent / $limit
-    $color = if ($frac -ge 1) { '#E5484D' } elseif ($frac -ge 0.75) { '#E0B050' } else { '#8FB573' }
-    $el.cBox.Visibility = 'Visible'
-    $el.cLabel.Text = (T 'cLabel') -f (Usd $spent), (Usd $limit)
-    $el.cLabel.Foreground = Brush $(if ($frac -ge 1) { '#E5484D' } else { '#EEE' })
+    $color = if ($c.tooHigh) { '#E0B050' } elseif ($frac -ge 1) { '#E5484D' } elseif ($frac -ge 0.75) { '#E0B050' } else { '#8FB573' }
+    $el.cBox.Visibility = 'Visible'; $el.cSub.Visibility = 'Visible'
+    # "≈" until the amount from claude.ai has been entered
+    $el.cLabel.Text = (T 'cLabel') -f $(if ($c.estimated) { '≈ ' + (Usd $spent) } else { Usd $spent }), (Usd $limit)
+    $el.cLabel.Foreground = Brush $(if ($frac -ge 1 -and -not $c.tooHigh) { '#E5484D' } else { '#EEE' })
     $w = $el.cTrack.Width
     $el.cUsed.Width = $w * [math]::Min(1, $frac); $el.cUsed.Fill = Brush $color
     $over = $c.forecast -gt $limit
@@ -540,7 +551,9 @@ function Draw-Credit($c, $u) {
     $nowL = Get-Date
     $sessOver = $u.session -ge $cfg.sessionLimit; $weekOver = $u.week -ge $cfg.weeklyLimit
     $toReset = if ($u.reset) { ($u.reset - $nowL.ToUniversalTime()).TotalMinutes } else { 0 }
-    if ($left -le 0 -and ($sessOver -or $weekOver)) {
+    if ($c.tooHigh) {
+        $status = T 'cTooHigh'; $sc = '#E0B050'; $el.cFc.Visibility = 'Collapsed'; $el.cSub.Visibility = 'Collapsed'
+    } elseif ($left -le 0 -and ($sessOver -or $weekOver)) {
         $status = (T 'cStopped') -f $(if ($weekOver) { T 'cWeek' } else { T 'cSession' }); $sc = '#E5484D'
     } elseif ($sessOver -or $weekOver) {
         $sc = '#E0B050'
