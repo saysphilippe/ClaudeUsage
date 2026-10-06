@@ -84,6 +84,8 @@ Settings are saved in `%LOCALAPPDATA%\ClaudeUsage\config.json`. Reinstalling kee
 
 > The percentages are estimates based on your local logs. Calibrate them against `/usage` for the best accuracy.
 
+**Over 100 %:** the percentage is not capped. Above the limit the bar turns red, the line shows how much you are *over* (for example "1.1M used · 98K over the limit") and a note explains why: you are using extra credits, or the real limit is higher than the one set in the widget. If `/usage` in Claude Code shows less than the widget, calibrate (right-click → Calibrate …) so the widget matches.
+
 ## Uninstall
 
 Double-click [`Uninstall.cmd`](Uninstall.cmd), or run:

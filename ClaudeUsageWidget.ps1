@@ -17,6 +17,7 @@ $strings = @{
     en = @{
         title = 'Claude usage'; session = '5-hour session: {0:0}%'; resets = ' · resets in {0}h {1:00}m'
         usedLeft = '{0} used · {1} left'; week = 'Last 7 days: {0:0}%'; updated = 'Updated {0} · right-click for options'
+        usedOver = '{0} used · {1} over the limit'; overHint = 'Over the limit – you are using extra credits, or the real limit is higher than set here. Calibrate from /usage (right-click).'
         askCal_session = 'Run /usage in Claude Code and enter the % shown for the 5-hour limit:'
         askCal_weekly = 'Run /usage in Claude Code and enter the % shown for the weekly limit:'
         askLimit_session = 'Token limit for the 5-hour window:'; askLimit_weekly = 'Token limit for the weekly window:'
@@ -31,6 +32,7 @@ $strings = @{
     no = @{
         title = 'Claude-forbruk'; session = '5-timers økt: {0:0}%'; resets = ' · nullstilles om {0}t {1:00}m'
         usedLeft = '{0} brukt · {1} igjen'; week = 'Siste 7 dager: {0:0}%'; updated = 'Oppdatert {0} · høyreklikk for valg'
+        usedOver = '{0} brukt · {1} over grensen'; overHint = 'Over grensen – du bruker ekstra kreditter, eller grensen er høyere enn satt her. Kalibrer med /usage (høyreklikk).'
         askCal_session = 'Kjør /usage i Claude Code og skriv inn prosenten som vises for 5-timersgrensen:'
         askCal_weekly = 'Kjør /usage i Claude Code og skriv inn prosenten som vises for ukegrensen:'
         askLimit_session = 'Tokengrense for 5-timersvinduet:'; askLimit_weekly = 'Tokengrense for ukevinduet:'
@@ -45,6 +47,7 @@ $strings = @{
     sv = @{
         title = 'Claude-användning'; session = '5-timmarssession: {0:0}%'; resets = ' · nollställs om {0}h {1:00}m'
         usedLeft = '{0} använt · {1} kvar'; week = 'Senaste 7 dagarna: {0:0}%'; updated = 'Uppdaterad {0} · högerklicka för alternativ'
+        usedOver = '{0} använt · {1} över gränsen'; overHint = 'Över gränsen – du använder extra krediter, eller så är gränsen högre än inställt här. Kalibrera med /usage (högerklicka).'
         askCal_session = 'Kör /usage i Claude Code och ange procentsatsen som visas för 5-timmarsgränsen:'
         askCal_weekly = 'Kör /usage i Claude Code och ange procentsatsen som visas för veckogränsen:'
         askLimit_session = 'Tokengräns för 5-timmarsfönstret:'; askLimit_weekly = 'Tokengräns för veckofönstret:'
@@ -59,6 +62,7 @@ $strings = @{
     da = @{
         title = 'Claude-forbrug'; session = '5-timers session: {0:0}%'; resets = ' · nulstilles om {0}t {1:00}m'
         usedLeft = '{0} brugt · {1} tilbage'; week = 'Seneste 7 dage: {0:0}%'; updated = 'Opdateret {0} · højreklik for indstillinger'
+        usedOver = '{0} brugt · {1} over grænsen'; overHint = 'Over grænsen – du bruger ekstra kreditter, eller grænsen er højere end indstillet her. Kalibrér med /usage (højreklik).'
         askCal_session = 'Kør /usage i Claude Code, og indtast den procent, der vises for 5-timersgrænsen:'
         askCal_weekly = 'Kør /usage i Claude Code, og indtast den procent, der vises for ugegrænsen:'
         askLimit_session = 'Tokengrænse for 5-timersvinduet:'; askLimit_weekly = 'Tokengrænse for ugevinduet:'
@@ -200,10 +204,11 @@ function ModelName($m) {
       <StackPanel Name="nowPanel">
         <TextBlock Name="sLabel" Foreground="#EEE" FontSize="12"/>
         <ProgressBar Name="sBar" Height="6" Maximum="100" Margin="0,3,0,2" Background="#333" BorderThickness="0" Foreground="#D97757"/>
-        <TextBlock Name="sSub" Foreground="#999" FontSize="11" Margin="0,0,0,8"/>
+        <TextBlock Name="sSub" Foreground="#999" FontSize="11" Margin="0,0,0,8" TextWrapping="Wrap"/>
         <TextBlock Name="wLabel" Foreground="#EEE" FontSize="12"/>
         <ProgressBar Name="wBar" Height="6" Maximum="100" Margin="0,3,0,2" Background="#333" BorderThickness="0" Foreground="#6A9BCC"/>
-        <TextBlock Name="wSub" Foreground="#999" FontSize="11"/>
+        <TextBlock Name="wSub" Foreground="#999" FontSize="11" TextWrapping="Wrap"/>
+        <TextBlock Name="overHint" Foreground="#E5484D" FontSize="11" TextWrapping="Wrap" Margin="0,8,0,0" Visibility="Collapsed"/>
       </StackPanel>
       <StackPanel Name="histPanel" Visibility="Collapsed">
         <DockPanel>
@@ -228,7 +233,7 @@ function ModelName($m) {
 '@
 $win = [Windows.Markup.XamlReader]::Load((New-Object System.Xml.XmlNodeReader $xaml))
 $el = @{}
-'root','title','tabNow','tabHist','nowPanel','histPanel','sLabel','sBar','sSub','wLabel','wBar','wSub','upd',
+'root','title','tabNow','tabHist','nowPanel','histPanel','sLabel','sBar','sSub','wLabel','wBar','wSub','overHint','upd',
 'rangePanel','hDaily','cDaily','hTotal','hToday','cToday','hTodayTotal','hModels','pModels','hProjects','pProjects','hSince' | ForEach-Object { $el[$_] = $win.FindName($_) }
 $win.Left = $cfg.left; $win.Top = $cfg.top; $win.Topmost = [bool]$cfg.topmost
 $script:last = $null
@@ -359,22 +364,34 @@ function Show-Tab($tab) {
 $el.tabNow.Add_MouseLeftButtonDown({ param($s, $e) Show-Tab 'now'; $e.Handled = $true })
 $el.tabHist.Add_MouseLeftButtonDown({ param($s, $e) Show-Tab 'history'; $e.Handled = $true })
 
+function Get-UsedText($used, $limit) {
+    if ($used -le $limit) { (T 'usedLeft') -f (Fmt $used), (Fmt ($limit - $used)) } else { (T 'usedOver') -f (Fmt $used), (Fmt ($used - $limit)) }
+}
+function Set-Meter($label, $bar, $sub, $text, $pct, $color) {
+    $over = $pct -gt 100
+    $label.Text = $text
+    $bar.Value = [math]::Min(100, $pct)
+    $bar.Foreground = Brush $(if ($over) { '#E5484D' } else { $color })
+    $label.Foreground = Brush $(if ($over) { '#E5484D' } else { '#EEE' })
+    $sub.Foreground = Brush $(if ($over) { '#EE8A8D' } else { '#999' })
+}
 function Refresh {
     $all = Update-Data
     Update-History $all
     $u = Get-Usage $all; $script:last = $u
-    $sp = [math]::Min(100, 100 * $u.session / [double]$cfg.sessionLimit)
-    $wp = [math]::Min(100, 100 * $u.week / [double]$cfg.weeklyLimit)
+    # Percentages are not capped: above 100 % you are either on extra credits, or the real limit is higher
+    # than the one set here. The bar is then full and red, and "x over the limit" is shown instead of "0 left".
+    $sp = 100 * $u.session / [double]$cfg.sessionLimit
+    $wp = 100 * $u.week / [double]$cfg.weeklyLimit
     $el.title.Text = T 'title'
     $el.tabNow.Text = T 'tabNow'; $el.tabHist.Text = T 'tabHist'
-    $el.sLabel.Text = (T 'session') -f $sp
-    $el.sBar.Value = $sp
-    $rem = [math]::Max(0, $cfg.sessionLimit - $u.session)
     $resetTxt = if ($u.reset) { $m = [int]($u.reset - (Get-Date).ToUniversalTime()).TotalMinutes; (T 'resets') -f [math]::Floor($m/60), ($m % 60) } else { '' }
-    $el.sSub.Text = ((T 'usedLeft') -f (Fmt $u.session), (Fmt $rem)) + $resetTxt
-    $el.wLabel.Text = (T 'week') -f $wp
-    $el.wBar.Value = $wp
-    $el.wSub.Text = (T 'usedLeft') -f (Fmt $u.week), (Fmt ([math]::Max(0, $cfg.weeklyLimit - $u.week)))
+    $el.sSub.Text = (Get-UsedText $u.session $cfg.sessionLimit) + $resetTxt
+    $el.wSub.Text = Get-UsedText $u.week $cfg.weeklyLimit
+    Set-Meter $el.sLabel $el.sBar $el.sSub ((T 'session') -f $sp) $sp '#D97757'
+    Set-Meter $el.wLabel $el.wBar $el.wSub ((T 'week') -f $wp) $wp '#6A9BCC'
+    $el.overHint.Text = T 'overHint'
+    $el.overHint.Visibility = $(if ($sp -gt 100 -or $wp -gt 100) { 'Visible' } else { 'Collapsed' })
     $el.upd.Text = (T 'updated') -f (Get-Date -Format t)
     if ($cfg.tab -eq 'history') { Draw-History }
 }
