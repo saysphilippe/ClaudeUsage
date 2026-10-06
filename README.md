@@ -84,9 +84,19 @@ Claude Code deletes its own logs after 30 days by default. The widget therefore 
 
 Settings are saved in `%LOCALAPPDATA%\ClaudeUsage\config.json`. Reinstalling keeps both your settings and your history.
 
-> The percentages are estimates based on your local logs. Calibrate them against `/usage` for the best accuracy.
+> Without the status line below, the percentages are estimates based on your local logs. Calibrate them against `/usage` for the best accuracy.
 
 **Over 100 %:** the percentage is not capped. Above the limit the bar turns red, the line shows how much you are *over* (for example "1.1M used · 98K over the limit") and a note explains why: you are using extra credits, or the real limit is higher than the one set in the widget. If `/usage` in Claude Code shows less than the widget, calibrate (right-click → Calibrate …) so the widget matches.
+
+### Exact figures from Claude Code (status line)
+
+With a Pro or Max plan, Claude Code reports your exact usage – the same percentages and reset times as `/usage` – to its [status line](https://code.claude.com/docs/en/statusline). The installer adds a small status line script (`statusline.ps1`) that saves these figures for the widget and shows a short line at the bottom of Claude Code, for example `Opus 5.5 · 5h 37% (→14:05) · week 21% · context 12%`.
+
+The widget then uses Claude's own 5-hour and weekly windows, shows when they reset, and recalibrates the limits by itself, so you no longer need to calibrate by hand. The figures update each time Claude Code replies, and the footer shows when they were last received. If you already have a status line of your own, the installer leaves it alone and the widget estimates from your logs as before. Uninstalling removes the status line again.
+
+### Pace this week
+
+Under the weekly limit, a chart compares your usage this week (blue) with an even pace up to the weekly reset (grey dashed). A dashed line shows where you end up at your average pace so far. The text below says how much you can use per day and still stay within the limit, or – if you are going too fast – when you will reach it.
 
 ### Extra credits (cost control)
 
