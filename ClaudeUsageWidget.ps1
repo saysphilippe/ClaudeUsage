@@ -8,7 +8,7 @@ $logRoot  = Join-Path $env:USERPROFILE '.claude\projects'
 $inv      = [Globalization.CultureInfo]::InvariantCulture
 
 $cfg = [ordered]@{ sessionLimit = 1000000; weeklyLimit = 15000000; topmost = $true; left = 100; top = 100; language = 'en'; tab = 'now'; historyRange = 30
-                   creditLimit = 0; creditResetDay = 1; creditBase = $null; creditBaseAt = $null; fx = $null; fxDate = '' }
+                   creditLimit = 0; creditResetDay = 1; creditBase = $null; creditBaseAt = $null; fx = $null; fxDate = ''; weeklyReset = $null }
 if (Test-Path $cfgPath) {
     try { (Get-Content $cfgPath -Raw | ConvertFrom-Json).psobject.Properties | ForEach-Object { $cfg[$_.Name] = $_.Value } } catch {}
 }
@@ -36,6 +36,9 @@ $strings = @{
         cStopped = 'Credit limit reached – Claude stops until the {0} resets.'
         cForecast = 'Forecast for this period: {0}'; cSession = 'session'; cWeek = 'weekly limit'
         cTooHigh = 'Claude is still answering, so the estimate is too high. Enter the amount from claude.ai (right-click → Extra credits) and calibrate the limits from /usage.'
+        weekFixed = 'Weekly limit: {0:0}%'; weekResets = ' · resets {0}'; mWeekReset = 'Set when the weekly limit resets…'
+        askWeekReset = 'When does the weekly limit reset? Copy it from /usage (e.g. "Oct 9, 3pm") or type day and time (e.g. "Thu 15:00"):'
+        badTime = 'Could not read that time. Try for example "Thu 15:00" or "09.10 15:00".'
         calHint = 'The limits are not calibrated, so the credit estimate may be wrong. Right-click → Calibrate from /usage.'
         mCredit = 'Extra credits'; mCreditLimit = 'Set credit limit (USD)…'; mCreditSpent = 'Enter credits used from claude.ai…'; mCreditDay = 'Credit reset day…'
         askCreditLimit = 'Your monthly limit for extra credits in USD (0 hides the section):'
@@ -63,6 +66,9 @@ $strings = @{
         cStopped = 'Kredittgrensen er nådd – Claude stopper til {0} nullstilles.'
         cForecast = 'Prognose for perioden: {0}'; cSession = 'økten'; cWeek = 'ukegrensen'
         cTooHigh = 'Claude svarer fortsatt, så anslaget er for høyt. Registrer beløpet fra claude.ai (høyreklikk → Ekstra kreditter) og kalibrer grensene fra /usage.'
+        weekFixed = 'Ukegrense: {0:0}%'; weekResets = ' · nullstilles {0}'; mWeekReset = 'Angi når ukegrensen nullstilles…'
+        askWeekReset = 'Når nullstilles ukegrensen? Kopier fra /usage (f.eks. «Oct 9, 3pm») eller skriv dag og klokkeslett (f.eks. «tor 15:00»):'
+        badTime = 'Klarte ikke å lese tidspunktet. Prøv for eksempel «tor 15:00» eller «09.10 15:00».'
         calHint = 'Grensene er ikke kalibrert, så kreditt-anslaget kan bli feil. Høyreklikk → Kalibrer fra /usage.'
         mCredit = 'Ekstra kreditter'; mCreditLimit = 'Angi kredittgrense (USD)…'; mCreditSpent = 'Angi brukte kreditter fra claude.ai…'; mCreditDay = 'Dag kredittene nullstilles…'
         askCreditLimit = 'Månedlig grense for ekstra kreditter i USD (0 skjuler seksjonen):'
@@ -90,6 +96,9 @@ $strings = @{
         cStopped = 'Kreditgränsen är nådd – Claude stoppar tills {0} nollställs.'
         cForecast = 'Prognos för perioden: {0}'; cSession = 'sessionen'; cWeek = 'veckogränsen'
         cTooHigh = 'Claude svarar fortfarande, så uppskattningen är för hög. Ange beloppet från claude.ai (högerklicka → Extra krediter) och kalibrera gränserna från /usage.'
+        weekFixed = 'Veckogräns: {0:0}%'; weekResets = ' · nollställs {0}'; mWeekReset = 'Ange när veckogränsen nollställs…'
+        askWeekReset = 'När nollställs veckogränsen? Kopiera från /usage (t.ex. "Oct 9, 3pm") eller skriv dag och tid (t.ex. "tor 15:00"):'
+        badTime = 'Kunde inte läsa tiden. Prova till exempel "tor 15:00" eller "09.10 15:00".'
         calHint = 'Gränserna är inte kalibrerade, så kreditberäkningen kan bli fel. Högerklicka → Kalibrera från /usage.'
         mCredit = 'Extra krediter'; mCreditLimit = 'Ange kreditgräns (USD)…'; mCreditSpent = 'Ange använda krediter från claude.ai…'; mCreditDay = 'Dag krediterna nollställs…'
         askCreditLimit = 'Månadsgräns för extra krediter i USD (0 döljer avsnittet):'
@@ -117,6 +126,9 @@ $strings = @{
         cStopped = 'Kreditgrænsen er nået – Claude stopper, til {0} nulstilles.'
         cForecast = 'Prognose for perioden: {0}'; cSession = 'sessionen'; cWeek = 'ugegrænsen'
         cTooHigh = 'Claude svarer stadig, så overslaget er for højt. Angiv beløbet fra claude.ai (højreklik → Ekstra kreditter) og kalibrér grænserne fra /usage.'
+        weekFixed = 'Ugegrænse: {0:0}%'; weekResets = ' · nulstilles {0}'; mWeekReset = 'Angiv hvornår ugegrænsen nulstilles…'
+        askWeekReset = 'Hvornår nulstilles ugegrænsen? Kopiér fra /usage (f.eks. "Oct 9, 3pm") eller skriv dag og klokkeslæt (f.eks. "tor 15:00"):'
+        badTime = 'Kunne ikke læse tidspunktet. Prøv f.eks. "tor 15:00" eller "09.10 15:00".'
         calHint = 'Grænserne er ikke kalibreret, så kreditoverslaget kan være forkert. Højreklik → Kalibrér fra /usage.'
         mCredit = 'Ekstra kreditter'; mCreditLimit = 'Angiv kreditgrænse (USD)…'; mCreditSpent = 'Angiv brugte kreditter fra claude.ai…'; mCreditDay = 'Dag kreditterne nulstilles…'
         askCreditLimit = 'Månedlig grænse for ekstra kreditter i USD (0 skjuler afsnittet):'
@@ -187,6 +199,44 @@ function Update-Data {
     @($all | Sort-Object t)
 }
 
+# Anthropic resets the weekly limit at a fixed time every 7 days (shown by /usage). When the user
+# has entered that time, weeks run from that anchor; otherwise the last 7 days are used.
+function Get-WeekAnchor {
+    if (-not $cfg.weeklyReset) { return $null }
+    try { [datetime]::Parse($cfg.weeklyReset, $inv, 'RoundtripKind').ToUniversalTime() } catch { $null }
+}
+function Get-WeekStart($t, $anchor) { $anchor.AddDays(7 * [math]::Floor(($t - $anchor).TotalDays / 7)) }
+# Reads a reset time as /usage shows it ("Oct 9, 3pm"), as day and time ("tor 15:00") or as a date ("09.10 15:00").
+# Returns local time, or $null.
+function ConvertFrom-ResetText($text) {
+    $x = ($text -replace '\(.*?\)', '' -replace '(?i)resets?|kl\.?', '').Trim().ToLower()
+    $now = Get-Date
+    $months = 'jan', 'feb', 'mar', 'apr', 'may', 'jun', 'jul', 'aug', 'sep', 'oct', 'nov', 'dec'
+    if ($x -match '([a-z]{3})[a-z]*\.?\s+(\d{1,2}),?\s+(?:at\s+)?(\d{1,2})(?::(\d{2}))?\s*(am|pm)?') {
+        $mo = [array]::IndexOf($months, $matches[1]) + 1
+        if ($mo -gt 0) {
+            $h = [int]$matches[3]; if ($matches[5] -eq 'pm' -and $h -lt 12) { $h += 12 }; if ($matches[5] -eq 'am' -and $h -eq 12) { $h = 0 }
+            $d = Get-Date -Year $now.Year -Month $mo -Day ([int]$matches[2]) -Hour $h -Minute ([int]$matches[4]) -Second 0 -Millisecond 0
+            if ($d -lt $now.AddDays(-180)) { $d = $d.AddYears(1) }
+            return $d
+        }
+    }
+    if ($x -match '^(\d{1,2})[./](\d{1,2})(?:[./](\d{2,4}))?\s+(\d{1,2})[:.](\d{2})') {
+        $y = if ($matches[3]) { [int]$matches[3] } else { $now.Year }; if ($y -lt 100) { $y += 2000 }
+        return Get-Date -Year $y -Month ([int]$matches[2]) -Day ([int]$matches[1]) -Hour ([int]$matches[4]) -Minute ([int]$matches[5]) -Second 0 -Millisecond 0
+    }
+    $days = @{ mon = 1; man = 1; mån = 1; tue = 2; tir = 2; tis = 2; wed = 3; ons = 3; thu = 4; tor = 4; fri = 5; fre = 5; sat = 6; lør = 6; lör = 6; sun = 0; søn = 0; sön = 0 }
+    if ($x -match '^(\p{L}{3})\p{L}*\.?\s+(\d{1,2})(?:[:.](\d{2}))?\s*(am|pm)?') {
+        $dow = $days[$matches[1]]
+        if ($null -ne $dow) {
+            $h = [int]$matches[2]; if ($matches[4] -eq 'pm' -and $h -lt 12) { $h += 12 }; if ($matches[4] -eq 'am' -and $h -eq 12) { $h = 0 }
+            $d = $now.Date.AddHours($h).AddMinutes([int]$matches[3])
+            while ([int]$d.DayOfWeek -ne $dow -or $d -le $now) { $d = $d.AddDays(1) }
+            return $d
+        }
+    }
+    $null
+}
 function Get-Usage($all) {
     $now = (Get-Date).ToUniversalTime()
     $recent = @($all | Where-Object { $_.t -ge $now.AddDays(-7) })
@@ -197,10 +247,15 @@ function Get-Usage($all) {
         $wTok += $i.n
     }
     if (-not $wStart -or $now -ge $wStart.AddHours(5)) { $wTok = 0; $reset = $null } else { $reset = $wStart.AddHours(5) }
-    $week = ($recent | Measure-Object n -Sum).Sum; if (-not $week) { $week = 0 }
+    $anchor = Get-WeekAnchor; $weekReset = $null; $weekItems = $recent
+    if ($anchor) {
+        $ws = Get-WeekStart $now $anchor; $weekReset = $ws.AddDays(7)
+        $weekItems = @($recent | Where-Object { $_.t -ge $ws })
+    }
+    $week = ($weekItems | Measure-Object n -Sum).Sum; if (-not $week) { $week = 0 }
     # Tokens used in the current window during the last hour, for the "limit reached in ..." forecast
     $hourTok = 0; if ($reset) { foreach ($i in $recent) { if ($i.t -ge $wStart -and $i.t -ge $now.AddHours(-1)) { $hourTok += $i.n } } }
-    [pscustomobject]@{ session = $wTok; reset = $reset; week = $week; hourTok = $hourTok }
+    [pscustomobject]@{ session = $wTok; reset = $reset; week = $week; weekReset = $weekReset; hourTok = $hourTok }
 }
 
 # --- Extra credits ----------------------------------------------------------
@@ -219,14 +274,15 @@ function Get-Credit($all) {
     $baseAt = $null
     if ($cfg.creditBaseAt) { $baseAt = [datetime]::Parse($cfg.creditBaseAt, $inv, 'RoundtripKind').ToUniversalTime(); if ($baseAt -lt $startU) { $baseAt = $null } }
     $items = @($all | Where-Object { $_.t -ge $startU.AddDays(-7) })
-    $wStart = $null; $wTok = 0; $weekTok = 0; $q = 0; $lastHour = 0.0
+    $wStart = $null; $wTok = 0; $weekTok = 0; $q = 0; $lastHour = 0.0; $anchor = Get-WeekAnchor; $curWeek = $null
     $spent = if ($baseAt) { [double]$cfg.creditBase } else { 0.0 }
     # Claude stops once the credit limit is reached. Messages over the limit after the estimate
     # has passed it prove the estimate is too high (usually because the limits are not calibrated).
     $crossed = $spent -ge [double]$cfg.creditLimit; $afterCap = 0
     foreach ($i in $items) {
         if (-not $wStart -or $i.t -ge $wStart.AddHours(5)) { $wStart = $i.t; $wTok = 0 }
-        while ($items[$q].t -lt $i.t.AddDays(-7)) { $weekTok -= $items[$q].n; $q++ }
+        if ($anchor) { $ws = Get-WeekStart $i.t $anchor; if ($ws -ne $curWeek) { $curWeek = $ws; $weekTok = 0 } }
+        else { while ($items[$q].t -lt $i.t.AddDays(-7)) { $weekTok -= $items[$q].n; $q++ } }
         $extra = $wTok -ge $cfg.sessionLimit -or $weekTok -ge $cfg.weeklyLimit
         $wTok += $i.n; $weekTok += $i.n
         if (-not $extra -or $i.t -lt $startU) { continue }
@@ -586,8 +642,9 @@ function Refresh {
     $resetTxt = if ($u.reset) { $m = [int]($u.reset - (Get-Date).ToUniversalTime()).TotalMinutes; (T 'resets') -f [math]::Floor($m/60), ($m % 60) } else { '' }
     $el.sSub.Text = (Get-UsedText $u.session $cfg.sessionLimit) + $resetTxt
     $el.wSub.Text = Get-UsedText $u.week $cfg.weeklyLimit
+    if ($u.weekReset) { $el.wSub.Text += (T 'weekResets') -f $u.weekReset.ToLocalTime().ToString('ddd d. MMM HH:mm') }
     Set-Meter $el.sLabel $el.sBar $el.sSub ((T 'session') -f $sp) $sp '#D97757'
-    Set-Meter $el.wLabel $el.wBar $el.wSub ((T 'week') -f $wp) $wp '#6A9BCC'
+    Set-Meter $el.wLabel $el.wBar $el.wSub ((T $(if ($u.weekReset) { 'weekFixed' } else { 'week' })) -f $wp) $wp '#6A9BCC'
     $uncalibrated = [int64]$cfg.sessionLimit -eq 1000000 -and [int64]$cfg.weeklyLimit -eq 15000000
     if ([double]$cfg.creditLimit -gt 0) {
         Draw-Credit (Get-Credit $all) $u
@@ -622,6 +679,13 @@ AddItem 'mCalSession' { Calibrate 'session' } | Out-Null
 AddItem 'mCalWeekly' { Calibrate 'weekly' } | Out-Null
 AddItem 'mSetSession' { SetLimit 'session' } | Out-Null
 AddItem 'mSetWeekly' { SetLimit 'weekly' } | Out-Null
+AddItem 'mWeekReset' {
+    $v = Ask (T 'askWeekReset') ''
+    if (-not $v) { return }
+    $d = ConvertFrom-ResetText $v
+    if ($d) { $cfg.weeklyReset = $d.ToUniversalTime().ToString('o'); Save-Config; Refresh }
+    else { [void][Windows.MessageBox]::Show((T 'badTime'), (T 'title')) }
+} | Out-Null
 $creditMenu = AddItem 'mCredit' {}
 AddItem 'mCreditLimit' {
     $v = Ask (T 'askCreditLimit') $cfg.creditLimit

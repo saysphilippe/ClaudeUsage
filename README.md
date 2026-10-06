@@ -3,7 +3,7 @@
 A small always-on-top Windows desktop widget that shows how much of your Claude Code usage you have spent:
 
 - **5-hour session** – tokens used in the current 5-hour window, how much is left, and when it resets
-- **Last 7 days** – tokens used over the past week
+- **Weekly limit** – tokens used this week and when the weekly limit resets (or over the last 7 days, until you enter the reset time)
 - **History tab** – charts of tokens per day (7, 30 or 90 days) and today by hour, plus your most-used models and projects
 
 It reads the local Claude Code logs in `%USERPROFILE%\.claude\projects`. Nothing is sent anywhere, and no API key or login is needed.
@@ -76,6 +76,7 @@ Claude Code deletes its own logs after 30 days by default. The widget therefore 
 | Refresh now | Re-reads the logs (this also happens automatically every minute) |
 | Calibrate 5-hour / weekly limit from /usage % | Run `/usage` in Claude Code and type the percentage it shows. The widget then works out your real limit, so its percentages match Claude's. |
 | Set 5-hour / weekly limit manually | Enter a token limit directly |
+| Set when the weekly limit resets | Copy the reset time from `/usage` (for example "Oct 9, 3pm") or type a day and time ("Thu 15:00", "09.10 15:00"). The week then runs from that time and resets every 7 days, like Claude's own weekly limit. |
 | Extra credits | Credit limit in USD, credits used according to claude.ai, and the day the credits reset |
 | Always on top | Keeps the widget above other windows |
 | Language | Switches between English, Norsk, Svenska and Dansk immediately |
