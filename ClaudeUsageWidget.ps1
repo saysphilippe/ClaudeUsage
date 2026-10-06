@@ -270,6 +270,18 @@ function Get-Live {
     }
     $o
 }
+# statusline.ps1 also logs each new weekly percentage to live-log.csv (time,pct,reset), for the pace chart
+$liveLogPath = Join-Path $dir 'live-log.csv'
+function Get-LiveLog($reset) {
+    if (-not (Test-Path $liveLogPath)) { return @() }
+    foreach ($line in Get-Content $liveLogPath) {
+        $f = $line.Split(','); if ($f.Count -lt 3) { continue }
+        try {
+            if ([math]::Abs(([DateTimeOffset]::FromUnixTimeSeconds([int64]$f[2]).UtcDateTime - $reset).TotalHours) -gt 1) { continue }
+            [pscustomobject]@{ t = [DateTimeOffset]::FromUnixTimeSeconds([int64]$f[0]).UtcDateTime; pct = [double]::Parse($f[1], $inv) }
+        } catch {}
+    }
+}
 function Get-Tokens($items, $from, $to) { $sum = [int64]0; foreach ($i in $items) { if ($i.t -ge $from -and $i.t -le $to) { $sum += $i.n } }; $sum }
 # Limit = tokens Claude had seen when it reported the percentage. Small percentages are too coarse,
 # and Claude reports at most 100 %, so at 100 % the real usage may be higher and the last limit is kept.
@@ -287,7 +299,9 @@ function Get-Usage($all) {
     if ($f -and $f.reset -gt $now) {
         $wStart = $f.reset.AddHours(-5); $reset = $f.reset
         $wTok = Get-Tokens $recent $wStart $now
-        if (-not (Set-LiveLimit 'session' (Get-Tokens $recent $wStart $live.at) $f.pct)) { $sPct = $f.pct }
+        [void](Set-LiveLimit 'session' (Get-Tokens $recent $wStart $live.at) $f.pct)
+        # Claude's own figure, plus what was used after Claude Code last reported it
+        $sPct = $f.pct + 100 * (Get-Tokens $recent $live.at.AddTicks(1) $now) / [double]$cfg.sessionLimit
     } else {
         # 5-hour windows start at the first message after the previous window ended
         $wStart = $null; $wTok = 0
@@ -301,7 +315,8 @@ function Get-Usage($all) {
     if ($sv -and $sv.reset -gt $now) {
         $iso = $sv.reset.ToString('o')
         if ($cfg.weeklyReset -ne $iso) { $cfg.weeklyReset = $iso; $script:cfgDirty = $true }
-        if (-not (Set-LiveLimit 'weekly' (Get-Tokens $recent $sv.reset.AddDays(-7) $live.at) $sv.pct)) { $wPct = $sv.pct }
+        [void](Set-LiveLimit 'weekly' (Get-Tokens $recent $sv.reset.AddDays(-7) $live.at) $sv.pct)
+        $wPct = $sv.pct + 100 * (Get-Tokens $recent $live.at.AddTicks(1) $now) / [double]$cfg.weeklyLimit
     }
     if ($script:cfgDirty) { Save-Config; $script:cfgDirty = $false }
     $anchor = Get-WeekAnchor; $weekReset = $null; $weekItems = $recent
@@ -660,8 +675,6 @@ function Draw-Pace($all, $u, $wp) {
     $el.paceBox.Visibility = 'Visible'; $el.pTitle.Text = T 'paceTitle'
     $nowU = (Get-Date).ToUniversalTime(); $end = $u.weekReset; $start = $end.AddDays(-7)
     $limit = [double]$cfg.weeklyLimit
-    # Scale the curve so it ends at the shown percentage (it also includes use outside Claude Code)
-    $scale = if ($u.week -gt 0) { $wp / (100 * $u.week / $limit) } else { 1 }
     $c = $el.cPace; $c.Children.Clear(); $W = $el.cTrack.Width; $H = 60; $top = 16
     $c.Width = $W; $c.Height = $top + $H + 16; $c.ToolTip = T 'paceTip'
     $elapsed = [math]::Max(0.5, ($nowU - $start).TotalHours); $leftH = ($end - $nowU).TotalHours
@@ -675,12 +688,19 @@ function Draw-Pace($all, $u, $wp) {
     Add-Line $c @(@(0, (& $Y 0)), @($W, (& $Y 100))) '#777' 1.5 @(3, 3)
     $xn = & $X $nowU
     Add-Line $c @(@($xn, $top), @($xn, ($top + $H))) '#3A3A3A' 1 $null
-    # Usage so far
-    $pts = New-Object System.Collections.Generic.List[object]; $pts.Add(@(0, (& $Y 0))); $cum = 0.0
-    foreach ($i in $all) {
-        if ($i.t -lt $start -or $i.t -gt $nowU) { continue }
-        $cum += $i.n; $pts.Add(@((& $X $i.t), (& $Y (100 * $cum / $limit * $scale))))
+    # Usage so far: the weekly percentages Claude Code reported (the same as /usage). Before the first
+    # of them, the local logs give the shape, scaled to meet that first figure.
+    $samples = @(Get-LiveLog $end | Where-Object { $_.t -ge $start -and $_.t -le $nowU })
+    $firstT = if ($samples) { $samples[0].t } else { $nowU }; $firstP = if ($samples) { $samples[0].pct } else { $wp }
+    $pts = New-Object System.Collections.Generic.List[object]; $pts.Add(@(0, (& $Y 0)))
+    $before = [double](Get-Tokens $all $start $firstT); $cum = 0.0
+    if ($before -gt 0) {
+        foreach ($i in $all) {
+            if ($i.t -lt $start -or $i.t -gt $firstT) { continue }
+            $cum += $i.n; $pts.Add(@((& $X $i.t), (& $Y ($firstP * $cum / $before))))
+        }
     }
+    foreach ($s in $samples) { $pts.Add(@((& $X $s.t), (& $Y $s.pct))) }
     $pts.Add(@($xn, (& $Y $wp)))
     Add-Line $c $pts.ToArray() '#6A9BCC' 2 $null
     # Forecast

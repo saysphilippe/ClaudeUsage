@@ -38,6 +38,20 @@ if ($r) {
         $live | ConvertTo-Json | Set-Content $tmp -Encoding UTF8
         Move-Item $tmp (Join-Path $dir 'live.json') -Force
     } catch {}
+    # Log each new weekly percentage, so the widget can draw the week as Claude counted it.
+    # A new reset time means a new week, and the log starts over.
+    if ($live.seven_day) {
+        try {
+            $logPath = Join-Path $dir 'live-log.csv'
+            $inv = [Globalization.CultureInfo]::InvariantCulture
+            $pct = $live.seven_day.pct.ToString($inv); $reset = $live.seven_day.resets_at
+            $row = '{0},{1},{2}' -f [DateTimeOffset]::UtcNow.ToUnixTimeSeconds(), $pct, $reset
+            $prev = if (Test-Path $logPath) { @(Get-Content $logPath -Tail 1)[0] }
+            $f = if ($prev) { $prev.Split(',') }
+            if (-not $f -or $f.Count -lt 3 -or [math]::Abs([int64]$f[2] - $reset) -gt 3600) { Set-Content $logPath $row -Encoding ASCII }
+            elseif ($f[1] -ne $pct) { Add-Content $logPath $row -Encoding ASCII }
+        } catch {}
+    }
     $arrow = [char]0x2192
     if ($live.five_hour) { $p = $live.five_hour.pct; $parts += Paint $p ('{0} {1:0}% ({2}{3})' -f $words.s, $p, $arrow, (Clock $live.five_hour.resets_at)) }
     if ($live.seven_day) { $p = $live.seven_day.pct; $parts += Paint $p ('{0} {1:0}%' -f $words.w, $p) }

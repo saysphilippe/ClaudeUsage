@@ -96,7 +96,7 @@ The widget then uses Claude's own 5-hour and weekly windows, shows when they res
 
 ### Pace this week
 
-Under the weekly limit, a chart compares your usage this week (blue) with an even pace up to the weekly reset (grey dashed). A dashed line shows where you end up at your average pace so far. The text below says how much you can use per day and still stay within the limit, or – if you are going too fast – when you will reach it.
+Under the weekly limit, a chart compares your usage this week (blue) with an even pace up to the weekly reset (grey dashed). With the status line, the blue line follows the weekly percentages Claude Code reported – the same figures as `/usage` – which the status line logs in `live-log.csv`. Before the first reported figure of the week, its shape comes from your local logs. A dashed line shows where you end up at your average pace so far. The text below says how much you can use per day and still stay within the limit, or – if you are going too fast – when you will reach it.
 
 ### Extra credits (cost control)
 
