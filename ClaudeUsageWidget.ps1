@@ -26,6 +26,7 @@ $strings = @{
         tabNow = 'Now'; tabHist = 'History'; hDaily = 'Tokens per day'; hToday = 'Today by hour'
         hModels = 'Models'; hProjects = 'Top projects'; hTotal = 'Total {0} · avg {1}/day'
         hNoData = 'No data for this period yet'; hSince = 'History since {0}'; noProject = 'No project'
+        hTodayTotal = 'Today {0} · busiest {1:00}:00–{2:00}:00'
     }
     no = @{
         title = 'Claude-forbruk'; session = '5-timers økt: {0:0}%'; resets = ' · nullstilles om {0}t {1:00}m'
@@ -39,6 +40,7 @@ $strings = @{
         tabNow = 'Nå'; tabHist = 'Historikk'; hDaily = 'Tokens per dag'; hToday = 'I dag per time'
         hModels = 'Modeller'; hProjects = 'Mest brukte prosjekter'; hTotal = 'Totalt {0} · snitt {1}/dag'
         hNoData = 'Ingen data for denne perioden ennå'; hSince = 'Historikk siden {0}'; noProject = 'Uten prosjekt'
+        hTodayTotal = 'I dag {0} · mest brukt kl. {1:00}–{2:00}'
     }
     sv = @{
         title = 'Claude-användning'; session = '5-timmarssession: {0:0}%'; resets = ' · nollställs om {0}h {1:00}m'
@@ -52,6 +54,7 @@ $strings = @{
         tabNow = 'Nu'; tabHist = 'Historik'; hDaily = 'Tokens per dag'; hToday = 'I dag per timme'
         hModels = 'Modeller'; hProjects = 'Mest använda projekt'; hTotal = 'Totalt {0} · snitt {1}/dag'
         hNoData = 'Ingen data för perioden ännu'; hSince = 'Historik sedan {0}'; noProject = 'Inget projekt'
+        hTodayTotal = 'I dag {0} · mest använt kl. {1:00}–{2:00}'
     }
     da = @{
         title = 'Claude-forbrug'; session = '5-timers session: {0:0}%'; resets = ' · nulstilles om {0}t {1:00}m'
@@ -65,6 +68,7 @@ $strings = @{
         tabNow = 'Nu'; tabHist = 'Historik'; hDaily = 'Tokens pr. dag'; hToday = 'I dag pr. time'
         hModels = 'Modeller'; hProjects = 'Mest brugte projekter'; hTotal = 'I alt {0} · gns. {1}/dag'
         hNoData = 'Ingen data for perioden endnu'; hSince = 'Historik siden {0}'; noProject = 'Intet projekt'
+        hTodayTotal = 'I dag {0} · mest brugt kl. {1:00}–{2:00}'
     }
 }
 $langNames = [ordered]@{ en = 'English'; no = 'Norsk'; sv = 'Svenska'; da = 'Dansk' }
@@ -209,7 +213,8 @@ function ModelName($m) {
         <Canvas Name="cDaily" Margin="0,4,0,0" ClipToBounds="False"/>
         <TextBlock Name="hTotal" Foreground="#999" FontSize="11" Margin="0,2,0,8"/>
         <TextBlock Name="hToday" Foreground="#EEE" FontSize="12"/>
-        <Canvas Name="cToday" Margin="0,4,0,8"/>
+        <Canvas Name="cToday" Margin="0,4,0,0"/>
+        <TextBlock Name="hTodayTotal" Foreground="#999" FontSize="11" Margin="0,2,0,8"/>
         <TextBlock Name="hModels" Foreground="#EEE" FontSize="12"/>
         <StackPanel Name="pModels" Margin="0,2,0,8"/>
         <TextBlock Name="hProjects" Foreground="#EEE" FontSize="12"/>
@@ -224,7 +229,7 @@ function ModelName($m) {
 $win = [Windows.Markup.XamlReader]::Load((New-Object System.Xml.XmlNodeReader $xaml))
 $el = @{}
 'root','title','tabNow','tabHist','nowPanel','histPanel','sLabel','sBar','sSub','wLabel','wBar','wSub','upd',
-'rangePanel','hDaily','cDaily','hTotal','hToday','cToday','hModels','pModels','hProjects','pProjects','hSince' | ForEach-Object { $el[$_] = $win.FindName($_) }
+'rangePanel','hDaily','cDaily','hTotal','hToday','cToday','hTodayTotal','hModels','pModels','hProjects','pProjects','hSince' | ForEach-Object { $el[$_] = $win.FindName($_) }
 $win.Left = $cfg.left; $win.Top = $cfg.top; $win.Topmost = [bool]$cfg.topmost
 $script:last = $null
 
@@ -305,14 +310,19 @@ function Draw-History {
     $td = $script:history[$today.ToString('yyyy-MM-dd', $inv)]
     $hours = if ($td) { $td.hours } else { [int64[]]::new(24) }
     $hmax = ($hours | Measure-Object -Maximum).Maximum
-    $c = $el.cToday; $c.Children.Clear(); $c.Width = $chartW; $H2 = 32; $c.Height = $H2 + 13
+    $c = $el.cToday; $c.Children.Clear(); $c.Width = $chartW; $H2 = 32; $padTop = 13; $c.Height = $padTop + $H2 + 13
     $hw = $chartW / 24; $now = (Get-Date).Hour
     for ($j = 0; $j -lt 24; $j++) {
         $h = if ($hmax -gt 0) { $H2 * $hours[$j] / $hmax } else { 0 }; if ($hours[$j] -gt 0 -and $h -lt 2) { $h = 2 }
-        Add-Bar $c ($j * $hw) ($hw - 2) $h $H2 $(if ($j -eq $now) { '#9DBEE0' } else { '#6A9BCC' }) ('{0:00}:00–{1:00}:00: {2}' -f $j, ($j + 1), (Fmt $hours[$j]))
+        Add-Bar $c ($j * $hw) ($hw - 2) $h $H2 $(if ($j -eq $now) { '#9DBEE0' } else { '#6A9BCC' }) ('{0:00}:00–{1:00}:00: {2}' -f $j, ($j + 1), (Fmt $hours[$j])) $padTop
     }
-    foreach ($j in 0, 6, 12, 18) { Add-Label $c ('{0:00}' -f $j) ($j * $hw) ($H2 + 1) }
-    Add-Label $c '24' $chartW ($H2 + 1) 'right'
+    foreach ($j in 0, 6, 12, 18) { Add-Label $c ('{0:00}' -f $j) ($j * $hw) ($padTop + $H2 + 1) }
+    Add-Label $c '24' $chartW ($padTop + $H2 + 1) 'right'
+    if ($hmax -gt 0) {
+        Add-Label $c (Fmt $hmax) $chartW 0 'right'
+        $peak = [array]::IndexOf($hours, [int64]$hmax)
+        $el.hTodayTotal.Text = (T 'hTodayTotal') -f (Fmt ($hours | Measure-Object -Sum).Sum), $peak, ($peak + 1)
+    } else { $el.hTodayTotal.Text = T 'hNoData' }
 
     # Models and projects over the selected range
     $models = @{}; $projects = @{}
