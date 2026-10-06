@@ -15,9 +15,9 @@ $strings = @{
     en = @{
         title = 'Claude usage'; session = '5-hour session: {0:0}%'; resets = ' · resets in {0}h {1:00}m'
         usedLeft = '{0} used · {1} left'; week = 'Last 7 days: {0:0}%'; updated = 'Updated {0} · right-click for options'
-        sessionName = '5-hour'; weeklyName = 'weekly'
-        askCalibrate = 'Run /usage in Claude Code and enter the % shown for the {0} limit:'
-        askLimit = 'Token limit for the {0} window:'
+        askCal_session = 'Run /usage in Claude Code and enter the % shown for the 5-hour limit:'
+        askCal_weekly = 'Run /usage in Claude Code and enter the % shown for the weekly limit:'
+        askLimit_session = 'Token limit for the 5-hour window:'; askLimit_weekly = 'Token limit for the weekly window:'
         mRefresh = 'Refresh now'; mCalSession = 'Calibrate 5-hour limit from /usage %…'; mCalWeekly = 'Calibrate weekly limit from /usage %…'
         mSetSession = 'Set 5-hour limit manually…'; mSetWeekly = 'Set weekly limit manually…'
         mTopmost = 'Always on top'; mLanguage = 'Language'; mClose = 'Close'
@@ -25,14 +25,35 @@ $strings = @{
     no = @{
         title = 'Claude-forbruk'; session = '5-timers økt: {0:0}%'; resets = ' · nullstilles om {0}t {1:00}m'
         usedLeft = '{0} brukt · {1} igjen'; week = 'Siste 7 dager: {0:0}%'; updated = 'Oppdatert {0} · høyreklikk for valg'
-        sessionName = '5-timers'; weeklyName = 'ukentlige'
-        askCalibrate = 'Kjør /usage i Claude Code og skriv inn prosenten som vises for den {0} grensen:'
-        askLimit = 'Tokengrense for det {0} vinduet:'
+        askCal_session = 'Kjør /usage i Claude Code og skriv inn prosenten som vises for 5-timersgrensen:'
+        askCal_weekly = 'Kjør /usage i Claude Code og skriv inn prosenten som vises for ukegrensen:'
+        askLimit_session = 'Tokengrense for 5-timersvinduet:'; askLimit_weekly = 'Tokengrense for ukevinduet:'
         mRefresh = 'Oppdater nå'; mCalSession = 'Kalibrer 5-timersgrensen fra /usage-%…'; mCalWeekly = 'Kalibrer ukegrensen fra /usage-%…'
         mSetSession = 'Angi 5-timersgrensen manuelt…'; mSetWeekly = 'Angi ukegrensen manuelt…'
         mTopmost = 'Alltid øverst'; mLanguage = 'Språk'; mClose = 'Lukk'
     }
+    sv = @{
+        title = 'Claude-användning'; session = '5-timmarssession: {0:0}%'; resets = ' · nollställs om {0}h {1:00}m'
+        usedLeft = '{0} använt · {1} kvar'; week = 'Senaste 7 dagarna: {0:0}%'; updated = 'Uppdaterad {0} · högerklicka för alternativ'
+        askCal_session = 'Kör /usage i Claude Code och ange procentsatsen som visas för 5-timmarsgränsen:'
+        askCal_weekly = 'Kör /usage i Claude Code och ange procentsatsen som visas för veckogränsen:'
+        askLimit_session = 'Tokengräns för 5-timmarsfönstret:'; askLimit_weekly = 'Tokengräns för veckofönstret:'
+        mRefresh = 'Uppdatera nu'; mCalSession = 'Kalibrera 5-timmarsgränsen från /usage-%…'; mCalWeekly = 'Kalibrera veckogränsen från /usage-%…'
+        mSetSession = 'Ange 5-timmarsgränsen manuellt…'; mSetWeekly = 'Ange veckogränsen manuellt…'
+        mTopmost = 'Alltid överst'; mLanguage = 'Språk'; mClose = 'Stäng'
+    }
+    da = @{
+        title = 'Claude-forbrug'; session = '5-timers session: {0:0}%'; resets = ' · nulstilles om {0}t {1:00}m'
+        usedLeft = '{0} brugt · {1} tilbage'; week = 'Seneste 7 dage: {0:0}%'; updated = 'Opdateret {0} · højreklik for indstillinger'
+        askCal_session = 'Kør /usage i Claude Code, og indtast den procent, der vises for 5-timersgrænsen:'
+        askCal_weekly = 'Kør /usage i Claude Code, og indtast den procent, der vises for ugegrænsen:'
+        askLimit_session = 'Tokengrænse for 5-timersvinduet:'; askLimit_weekly = 'Tokengrænse for ugevinduet:'
+        mRefresh = 'Opdater nu'; mCalSession = 'Kalibrer 5-timersgrænsen fra /usage-%…'; mCalWeekly = 'Kalibrer ugegrænsen fra /usage-%…'
+        mSetSession = 'Angiv 5-timersgrænsen manuelt…'; mSetWeekly = 'Angiv ugegrænsen manuelt…'
+        mTopmost = 'Altid øverst'; mLanguage = 'Sprog'; mClose = 'Luk'
+    }
 }
+$langNames = [ordered]@{ en = 'English'; no = 'Norsk'; sv = 'Svenska'; da = 'Dansk' }
 function T($key) { $s = $strings[$cfg.language]; if (-not $s) { $s = $strings.en }; $s[$key] }
 
 function Get-Usage {
@@ -108,13 +129,13 @@ function Refresh {
 function Ask($prompt, $default) { [Microsoft.VisualBasic.Interaction]::InputBox($prompt, (T 'title'), "$default") }
 function Calibrate($which) {
     $used = if ($which -eq 'session') { $script:last.session } else { $script:last.week }
-    $p = Ask ((T 'askCalibrate') -f (T "$($which)Name")) ''
+    $p = Ask (T "askCal_$which") ''
     if ($p -as [double] -and [double]$p -gt 0 -and $used -gt 0) {
         $cfg["$($which)Limit"] = [int64]($used * 100 / [double]$p); Save-Config; Refresh
     }
 }
 function SetLimit($which) {
-    $v = Ask ((T 'askLimit') -f (T "$($which)Name")) $cfg["$($which)Limit"]
+    $v = Ask (T "askLimit_$which") $cfg["$($which)Limit"]
     if ($v -as [int64]) { $cfg["$($which)Limit"] = [int64]$v; Save-Config; Refresh }
 }
 
@@ -130,9 +151,9 @@ $top = AddItem 'mTopmost' { $win.Topmost = -not $win.Topmost; $this.IsChecked = 
 $top.IsChecked = $win.Topmost
 $langMenu = AddItem 'mLanguage' {}
 $langItems = @{}
-foreach ($code in 'en', 'no') {
+foreach ($code in $langNames.Keys) {
     $li = AddItem $null { $cfg.language = $this.Tag; Save-Config; Set-MenuText; Refresh } $langMenu
-    $li.Tag = $code; $li.Header = @{ en = 'English'; no = 'Norsk' }[$code]; $langItems[$code] = $li
+    $li.Tag = $code; $li.Header = $langNames[$code]; $langItems[$code] = $li
 }
 AddItem 'mClose' { $win.Close() } | Out-Null
 function Set-MenuText {
