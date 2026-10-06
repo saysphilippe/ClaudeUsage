@@ -67,7 +67,7 @@ Running the installer again updates the widget and keeps your settings (limits, 
 
 - **Tokens per day:** choose **7d**, **30d** or **90d**. Hover over a bar to see the date and exact amount. Today's bar is lighter.
 - **Today by hour:** shows when you used Claude today. The current hour is lighter.
-- **Models** and **Top projects:** the share of tokens per model (for example Opus 5.5 and Sonnet 5.5) and per project folder over the selected period.
+- **Models** and **Top projects:** the share of tokens per model (for example Opus 5.5 and Sonnet 5.5) and per project folder over the selected period. Sessions started outside a project – in the Windows folder (for example `C:\Windows\System32`, where an administrator terminal opens), your home folder or the root of a drive – are grouped as **No project**. To get them counted per project, start Claude Code from the project folder.
 
 Claude Code deletes its own logs after 30 days by default. The widget therefore keeps a daily summary in `%LOCALAPPDATA%\ClaudeUsage\history.json`, so the history keeps growing beyond that. It only covers the time since you installed the widget, plus whatever logs Claude Code still had at that point.
 

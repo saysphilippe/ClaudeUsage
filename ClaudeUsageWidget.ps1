@@ -25,7 +25,7 @@ $strings = @{
         mTopmost = 'Always on top'; mLanguage = 'Language'; mClose = 'Close'
         tabNow = 'Now'; tabHist = 'History'; hDaily = 'Tokens per day'; hToday = 'Today by hour'
         hModels = 'Models'; hProjects = 'Top projects'; hTotal = 'Total {0} · avg {1}/day'
-        hNoData = 'No data for this period yet'; hSince = 'History since {0}'
+        hNoData = 'No data for this period yet'; hSince = 'History since {0}'; noProject = 'No project'
     }
     no = @{
         title = 'Claude-forbruk'; session = '5-timers økt: {0:0}%'; resets = ' · nullstilles om {0}t {1:00}m'
@@ -38,7 +38,7 @@ $strings = @{
         mTopmost = 'Alltid øverst'; mLanguage = 'Språk'; mClose = 'Lukk'
         tabNow = 'Nå'; tabHist = 'Historikk'; hDaily = 'Tokens per dag'; hToday = 'I dag per time'
         hModels = 'Modeller'; hProjects = 'Mest brukte prosjekter'; hTotal = 'Totalt {0} · snitt {1}/dag'
-        hNoData = 'Ingen data for denne perioden ennå'; hSince = 'Historikk siden {0}'
+        hNoData = 'Ingen data for denne perioden ennå'; hSince = 'Historikk siden {0}'; noProject = 'Uten prosjekt'
     }
     sv = @{
         title = 'Claude-användning'; session = '5-timmarssession: {0:0}%'; resets = ' · nollställs om {0}h {1:00}m'
@@ -51,7 +51,7 @@ $strings = @{
         mTopmost = 'Alltid överst'; mLanguage = 'Språk'; mClose = 'Stäng'
         tabNow = 'Nu'; tabHist = 'Historik'; hDaily = 'Tokens per dag'; hToday = 'I dag per timme'
         hModels = 'Modeller'; hProjects = 'Mest använda projekt'; hTotal = 'Totalt {0} · snitt {1}/dag'
-        hNoData = 'Ingen data för perioden ännu'; hSince = 'Historik sedan {0}'
+        hNoData = 'Ingen data för perioden ännu'; hSince = 'Historik sedan {0}'; noProject = 'Inget projekt'
     }
     da = @{
         title = 'Claude-forbrug'; session = '5-timers session: {0:0}%'; resets = ' · nulstilles om {0}t {1:00}m'
@@ -64,7 +64,7 @@ $strings = @{
         mTopmost = 'Altid øverst'; mLanguage = 'Sprog'; mClose = 'Luk'
         tabNow = 'Nu'; tabHist = 'Historik'; hDaily = 'Tokens pr. dag'; hToday = 'I dag pr. time'
         hModels = 'Modeller'; hProjects = 'Mest brugte projekter'; hTotal = 'I alt {0} · gns. {1}/dag'
-        hNoData = 'Ingen data for perioden endnu'; hSince = 'Historik siden {0}'
+        hNoData = 'Ingen data for perioden endnu'; hSince = 'Historik siden {0}'; noProject = 'Intet projekt'
     }
 }
 $langNames = [ordered]@{ en = 'English'; no = 'Norsk'; sv = 'Svenska'; da = 'Dansk' }
@@ -73,6 +73,14 @@ function T($key) { $s = $strings[$cfg.language]; if (-not $s) { $s = $strings.en
 # --- Reading the logs -------------------------------------------------------
 # Parsed entries are cached per file and only re-read when the file changes.
 $script:fileCache = @{}
+# Sessions started outside a project (Windows folder, home folder, drive root) are grouped as '~' = "No project"
+$noProject = '~'
+function Get-ProjectName($cwd) {
+    $p = $cwd.TrimEnd('\', '/')
+    if ($p -match '^[A-Za-z]:$' -or $p -eq $env:USERPROFILE.TrimEnd('\') -or
+        $p -eq $env:windir -or $p.StartsWith("$env:windir\", [StringComparison]::OrdinalIgnoreCase)) { return $noProject }
+    Split-Path $p -Leaf
+}
 function Read-LogFile($f) {
     $list = New-Object System.Collections.Generic.List[object]
     try {
@@ -82,7 +90,7 @@ function Read-LogFile($f) {
             $u = $o.message.usage; if (-not $u -or -not $o.timestamp) { continue }
             $n = [int64]$u.input_tokens + [int64]$u.output_tokens + [int64]$u.cache_creation_input_tokens
             if ($n -le 0) { continue }
-            $proj = if ($o.cwd) { Split-Path $o.cwd -Leaf } else { $f.Directory.Name }
+            $proj = if ($o.cwd) { Get-ProjectName $o.cwd } else { $f.Directory.Name }
             $model = if ($o.message.model) { [string]$o.message.model } else { 'unknown' }
             $list.Add([pscustomobject]@{
                 id = $o.message.id; n = $n; model = $model; project = $proj
@@ -135,7 +143,12 @@ if (Test-Path $histPath) {
         (Get-Content $histPath -Raw | ConvertFrom-Json).days.psobject.Properties | ForEach-Object {
             $v = $_.Value
             $hours = if ($v.hours.value) { $v.hours.value } else { $v.hours }
-            $script:history[$_.Name] = @{ total = [int64]$v.total; hours = [int64[]]@($hours); models = (ConvertTo-Counts $v.models); projects = (ConvertTo-Counts $v.projects) }
+            $projects = ConvertTo-Counts $v.projects
+            # Older versions stored the Windows folder name itself
+            foreach ($old in 'system32', 'SysWOW64') {
+                if ($projects.ContainsKey($old)) { $projects[$noProject] = [int64]$projects[$noProject] + $projects[$old]; $projects.Remove($old) }
+            }
+            $script:history[$_.Name] = @{ total = [int64]$v.total; hours = [int64[]]@($hours); models = (ConvertTo-Counts $v.models); projects = $projects }
         }
     } catch {}
 }
@@ -315,7 +328,8 @@ function Draw-History {
         Add-ShareRow $el.pModels $e.Key $e.Value ($e.Value / [double][math]::Max(1, $total)) $palette[$j % 5] $chartW; $j++
     }
     foreach ($e in ($projects.GetEnumerator() | Sort-Object Value -Descending | Select-Object -First 5)) {
-        Add-ShareRow $el.pProjects $e.Key $e.Value ($e.Value / [double][math]::Max(1, $total)) '#6A9BCC' $chartW
+        $none = $e.Key -eq $noProject
+        Add-ShareRow $el.pProjects $(if ($none) { T 'noProject' } else { $e.Key }) $e.Value ($e.Value / [double][math]::Max(1, $total)) $(if ($none) { '#777' } else { '#6A9BCC' }) $chartW
     }
     $el.hModels.Visibility = $el.pModels.Visibility = $(if ($models.Count) { 'Visible' } else { 'Collapsed' })
     $el.hProjects.Visibility = $el.pProjects.Visibility = $(if ($projects.Count) { 'Visible' } else { 'Collapsed' })
