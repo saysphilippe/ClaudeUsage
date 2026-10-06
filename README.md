@@ -76,6 +76,7 @@ Claude Code deletes its own logs after 30 days by default. The widget therefore 
 | Refresh now | Re-reads the logs (this also happens automatically every minute) |
 | Calibrate 5-hour / weekly limit from /usage % | Run `/usage` in Claude Code and type the percentage it shows. The widget then works out your real limit, so its percentages match Claude's. |
 | Set 5-hour / weekly limit manually | Enter a token limit directly |
+| Extra credits | Credit limit in USD, credits used according to claude.ai, and the day the credits reset |
 | Always on top | Keeps the widget above other windows |
 | Language | Switches between English, Norsk, Svenska and Dansk immediately |
 | Close | Closes the widget until next login or until you start it from the Desktop shortcut |
@@ -85,6 +86,18 @@ Settings are saved in `%LOCALAPPDATA%\ClaudeUsage\config.json`. Reinstalling kee
 > The percentages are estimates based on your local logs. Calibrate them against `/usage` for the best accuracy.
 
 **Over 100 %:** the percentage is not capped. Above the limit the bar turns red, the line shows how much you are *over* (for example "1.1M used · 98K over the limit") and a note explains why: you are using extra credits, or the real limit is higher than the one set in the widget. If `/usage` in Claude Code shows less than the widget, calibrate (right-click → Calibrate …) so the widget matches.
+
+### Extra credits (cost control)
+
+If your plan lets you use extra credits once you hit your limits (for example Pro with a monthly spend limit), right-click → **Extra credits → Set credit limit (USD)** and enter that limit. The Now tab then shows a credits section:
+
+- **Bar:** the solid part is what you have used this period. The faint part is the forecast for the whole period at your current pace, and it turns red if the forecast passes the limit.
+- **Used and left** in USD, plus your local currency (NOK, SEK or DKK, at Norges Bank's daily rate) when the widget is in Norwegian, Swedish or Danish.
+- **Status line:** whether credits are being used right now, how much per hour, and when they run out at this pace. If you are still inside your plan, it shows when you will reach the 5-hour limit.
+
+The cost is estimated from Anthropic's API list prices for each message sent while you were over the 5-hour or weekly limit. The estimate is only as good as your limits, so calibrate them from `/usage` first. For an exact figure, use **Extra credits → Enter credits used from claude.ai** with the amount shown under Settings → Usage on claude.ai. The widget then counts on from that amount. **Credit reset day** sets the day of the month the period starts (default: the 1st). Setting the limit to 0 hides the section.
+
+The widget only sees Claude Code on this PC. Usage in the Claude app or on claude.ai counts against the same limits but is not shown.
 
 ## Uninstall
 

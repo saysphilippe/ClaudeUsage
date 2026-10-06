@@ -1,5 +1,5 @@
 ﻿# Claude usage desktop widget - reads local Claude Code logs (~/.claude/projects/*.jsonl)
-Add-Type -AssemblyName PresentationFramework, PresentationCore, WindowsBase, Microsoft.VisualBasic, System.Windows.Forms, System.Drawing
+Add-Type -AssemblyName PresentationFramework, PresentationCore, WindowsBase, Microsoft.VisualBasic, System.Windows.Forms, System.Drawing, System.Net.Http
 
 $dir      = Split-Path -Parent $MyInvocation.MyCommand.Path
 $cfgPath  = Join-Path $dir 'config.json'
@@ -7,7 +7,8 @@ $histPath = Join-Path $dir 'history.json'
 $logRoot  = Join-Path $env:USERPROFILE '.claude\projects'
 $inv      = [Globalization.CultureInfo]::InvariantCulture
 
-$cfg = [ordered]@{ sessionLimit = 1000000; weeklyLimit = 15000000; topmost = $true; left = 100; top = 100; language = 'en'; tab = 'now'; historyRange = 30 }
+$cfg = [ordered]@{ sessionLimit = 1000000; weeklyLimit = 15000000; topmost = $true; left = 100; top = 100; language = 'en'; tab = 'now'; historyRange = 30
+                   creditLimit = 0; creditResetDay = 1; creditBase = $null; creditBaseAt = $null; fx = $null; fxDate = '' }
 if (Test-Path $cfgPath) {
     try { (Get-Content $cfgPath -Raw | ConvertFrom-Json).psobject.Properties | ForEach-Object { $cfg[$_.Name] = $_.Value } } catch {}
 }
@@ -28,6 +29,17 @@ $strings = @{
         hModels = 'Models'; hProjects = 'Top projects'; hTotal = 'Total {0} · avg {1}/day'
         hNoData = 'No data for this period yet'; hSince = 'History since {0}'; noProject = 'No project'
         hTodayTotal = 'Today {0} · busiest {1:00}:00–{2:00}:00'
+        cLabel = 'Extra credits: {0} of {1}'; cSub = '{0} left · resets {1}'; cSubLocal = '{0} used · {1} left · resets {2}'
+        cOk = 'Within your plan – no credits are being used.'; cOkEta = 'Within your plan. At this pace the 5-hour limit is reached in ~{0} (at {1}).'
+        cUsing = 'Using credits now: ~{0}/hour.'; cEmpty = ' At this pace they run out in ~{0} (at {1}).'
+        cResetFirst = ' The session resets first, in {0}.'; cOverIdle = 'Over the limit – new messages use credits.'
+        cStopped = 'Credit limit reached – Claude stops until the {0} resets.'
+        cForecast = 'Forecast for this period: {0}'; cSession = 'session'; cWeek = 'weekly limit'
+        calHint = 'The limits are not calibrated, so the credit estimate may be wrong. Right-click → Calibrate from /usage.'
+        mCredit = 'Extra credits'; mCreditLimit = 'Set credit limit (USD)…'; mCreditSpent = 'Enter credits used from claude.ai…'; mCreditDay = 'Credit reset day…'
+        askCreditLimit = 'Your monthly limit for extra credits in USD (0 hides the section):'
+        askCreditSpent = 'Credits used this period in USD, as shown on claude.ai (Settings → Usage):'
+        askCreditDay = 'Day of the month the credits reset (1–28):'
     }
     no = @{
         title = 'Claude-forbruk'; session = '5-timers økt: {0:0}%'; resets = ' · nullstilles om {0}t {1:00}m'
@@ -43,6 +55,17 @@ $strings = @{
         hModels = 'Modeller'; hProjects = 'Mest brukte prosjekter'; hTotal = 'Totalt {0} · snitt {1}/dag'
         hNoData = 'Ingen data for denne perioden ennå'; hSince = 'Historikk siden {0}'; noProject = 'Uten prosjekt'
         hTodayTotal = 'I dag {0} · mest brukt kl. {1:00}–{2:00}'
+        cLabel = 'Ekstra kreditter: {0} av {1}'; cSub = '{0} igjen · nullstilles {1}'; cSubLocal = '{0} brukt · {1} igjen · nullstilles {2}'
+        cOk = 'Innenfor abonnementet – ingen kreditter brukes nå.'; cOkEta = 'Innenfor abonnementet. Med dette tempoet nås 5-timersgrensen om ~{0} (kl. {1}).'
+        cUsing = 'Bruker kreditter nå: ~{0} per time.'; cEmpty = ' Med dette tempoet er de brukt opp om ~{0} (kl. {1}).'
+        cResetFirst = ' Økten nullstilles før det, om {0}.'; cOverIdle = 'Over grensen – nye meldinger trekker kreditter.'
+        cStopped = 'Kredittgrensen er nådd – Claude stopper til {0} nullstilles.'
+        cForecast = 'Prognose for perioden: {0}'; cSession = 'økten'; cWeek = 'ukegrensen'
+        calHint = 'Grensene er ikke kalibrert, så kreditt-anslaget kan bli feil. Høyreklikk → Kalibrer fra /usage.'
+        mCredit = 'Ekstra kreditter'; mCreditLimit = 'Angi kredittgrense (USD)…'; mCreditSpent = 'Angi brukte kreditter fra claude.ai…'; mCreditDay = 'Dag kredittene nullstilles…'
+        askCreditLimit = 'Månedlig grense for ekstra kreditter i USD (0 skjuler seksjonen):'
+        askCreditSpent = 'Kreditter brukt i denne perioden i USD, slik claude.ai viser (Innstillinger → Bruk):'
+        askCreditDay = 'Dag i måneden kredittene nullstilles (1–28):'
     }
     sv = @{
         title = 'Claude-användning'; session = '5-timmarssession: {0:0}%'; resets = ' · nollställs om {0}h {1:00}m'
@@ -58,6 +81,17 @@ $strings = @{
         hModels = 'Modeller'; hProjects = 'Mest använda projekt'; hTotal = 'Totalt {0} · snitt {1}/dag'
         hNoData = 'Ingen data för perioden ännu'; hSince = 'Historik sedan {0}'; noProject = 'Inget projekt'
         hTodayTotal = 'I dag {0} · mest använt kl. {1:00}–{2:00}'
+        cLabel = 'Extra krediter: {0} av {1}'; cSub = '{0} kvar · nollställs {1}'; cSubLocal = '{0} använt · {1} kvar · nollställs {2}'
+        cOk = 'Inom abonnemanget – inga krediter används nu.'; cOkEta = 'Inom abonnemanget. I den här takten nås 5-timmarsgränsen om ~{0} (kl. {1}).'
+        cUsing = 'Använder krediter nu: ~{0} per timme.'; cEmpty = ' I den här takten tar de slut om ~{0} (kl. {1}).'
+        cResetFirst = ' Sessionen nollställs innan dess, om {0}.'; cOverIdle = 'Över gränsen – nya meddelanden drar krediter.'
+        cStopped = 'Kreditgränsen är nådd – Claude stoppar tills {0} nollställs.'
+        cForecast = 'Prognos för perioden: {0}'; cSession = 'sessionen'; cWeek = 'veckogränsen'
+        calHint = 'Gränserna är inte kalibrerade, så kreditberäkningen kan bli fel. Högerklicka → Kalibrera från /usage.'
+        mCredit = 'Extra krediter'; mCreditLimit = 'Ange kreditgräns (USD)…'; mCreditSpent = 'Ange använda krediter från claude.ai…'; mCreditDay = 'Dag krediterna nollställs…'
+        askCreditLimit = 'Månadsgräns för extra krediter i USD (0 döljer avsnittet):'
+        askCreditSpent = 'Krediter använda under perioden i USD, som claude.ai visar (Inställningar → Användning):'
+        askCreditDay = 'Dag i månaden krediterna nollställs (1–28):'
     }
     da = @{
         title = 'Claude-forbrug'; session = '5-timers session: {0:0}%'; resets = ' · nulstilles om {0}t {1:00}m'
@@ -73,6 +107,17 @@ $strings = @{
         hModels = 'Modeller'; hProjects = 'Mest brugte projekter'; hTotal = 'I alt {0} · gns. {1}/dag'
         hNoData = 'Ingen data for perioden endnu'; hSince = 'Historik siden {0}'; noProject = 'Intet projekt'
         hTodayTotal = 'I dag {0} · mest brugt kl. {1:00}–{2:00}'
+        cLabel = 'Ekstra kreditter: {0} af {1}'; cSub = '{0} tilbage · nulstilles {1}'; cSubLocal = '{0} brugt · {1} tilbage · nulstilles {2}'
+        cOk = 'Inden for abonnementet – ingen kreditter bruges nu.'; cOkEta = 'Inden for abonnementet. I dette tempo nås 5-timersgrænsen om ~{0} (kl. {1}).'
+        cUsing = 'Bruger kreditter nu: ~{0} i timen.'; cEmpty = ' I dette tempo er de brugt op om ~{0} (kl. {1}).'
+        cResetFirst = ' Sessionen nulstilles før, om {0}.'; cOverIdle = 'Over grænsen – nye beskeder trækker kreditter.'
+        cStopped = 'Kreditgrænsen er nået – Claude stopper, til {0} nulstilles.'
+        cForecast = 'Prognose for perioden: {0}'; cSession = 'sessionen'; cWeek = 'ugegrænsen'
+        calHint = 'Grænserne er ikke kalibreret, så kreditoverslaget kan være forkert. Højreklik → Kalibrér fra /usage.'
+        mCredit = 'Ekstra kreditter'; mCreditLimit = 'Angiv kreditgrænse (USD)…'; mCreditSpent = 'Angiv brugte kreditter fra claude.ai…'; mCreditDay = 'Dag kreditterne nulstilles…'
+        askCreditLimit = 'Månedlig grænse for ekstra kreditter i USD (0 skjuler afsnittet):'
+        askCreditSpent = 'Kreditter brugt i perioden i USD, som claude.ai viser (Indstillinger → Forbrug):'
+        askCreditDay = 'Dag i måneden kreditterne nulstilles (1–28):'
     }
 }
 $langNames = [ordered]@{ en = 'English'; no = 'Norsk'; sv = 'Svenska'; da = 'Dansk' }
@@ -89,6 +134,17 @@ function Get-ProjectName($cwd) {
         $p -eq $env:windir -or $p.StartsWith("$env:windir\", [StringComparison]::OrdinalIgnoreCase)) { return $noProject }
     Split-Path $p -Leaf
 }
+# API list prices in USD per million tokens: input, output, cache read. Extra usage on a
+# subscription is billed at these rates. Cache writes cost 1.25x input (5 min) or 2x input (1 hour).
+$prices = @(
+    @('fable|mythos', 10, 50, 0.25), @('opus-5-5', 4, 20, 0.20), @('opus', 5, 25, 0.50),
+    @('sonnet-5', 2, 10, 0.20), @('sonnet', 3, 15, 0.30), @('haiku', 1, 5, 0.10)
+)
+function Get-Cost($model, $u) {
+    $p = $prices[1]; foreach ($row in $prices) { if ($model -match $row[0]) { $p = $row; break } }
+    $w1h = [double]$u.cache_creation.ephemeral_1h_input_tokens; $w5 = [double]$u.cache_creation_input_tokens - $w1h
+    ([double]$u.input_tokens * $p[1] + [double]$u.output_tokens * $p[2] + [double]$u.cache_read_input_tokens * $p[3] + $w5 * $p[1] * 1.25 + $w1h * $p[1] * 2) / 1e6
+}
 function Read-LogFile($f) {
     $list = New-Object System.Collections.Generic.List[object]
     try {
@@ -101,7 +157,7 @@ function Read-LogFile($f) {
             $proj = if ($o.cwd) { Get-ProjectName $o.cwd } else { $f.Directory.Name }
             $model = if ($o.message.model) { [string]$o.message.model } else { 'unknown' }
             $list.Add([pscustomobject]@{
-                id = $o.message.id; n = $n; model = $model; project = $proj
+                id = $o.message.id; n = $n; model = $model; project = $proj; cost = (Get-Cost $model $u)
                 t = [datetime]::Parse($o.timestamp, $null, 'RoundtripKind').ToUniversalTime()
             })
         }
@@ -138,7 +194,81 @@ function Get-Usage($all) {
     }
     if (-not $wStart -or $now -ge $wStart.AddHours(5)) { $wTok = 0; $reset = $null } else { $reset = $wStart.AddHours(5) }
     $week = ($recent | Measure-Object n -Sum).Sum; if (-not $week) { $week = 0 }
-    [pscustomobject]@{ session = $wTok; reset = $reset; week = $week }
+    # Tokens used in the current window during the last hour, for the "limit reached in ..." forecast
+    $hourTok = 0; if ($reset) { foreach ($i in $recent) { if ($i.t -ge $wStart -and $i.t -ge $now.AddHours(-1)) { $hourTok += $i.n } } }
+    [pscustomobject]@{ session = $wTok; reset = $reset; week = $week; hourTok = $hourTok }
+}
+
+# --- Extra credits ----------------------------------------------------------
+# Messages sent while the 5-hour window or the last 7 days are already over the limit are
+# paid from extra credits. Their cost is estimated from the API prices above. If the user
+# enters the amount claude.ai shows, that amount replaces the estimate up to that moment.
+function Get-CreditPeriod {
+    $now = Get-Date; $d = [math]::Max(1, [math]::Min(28, [int]$cfg.creditResetDay))
+    $start = (Get-Date -Year $now.Year -Month $now.Month -Day $d).Date
+    if ($start -gt $now) { $start = $start.AddMonths(-1) }
+    @{ start = $start; end = $start.AddMonths(1) }
+}
+function Get-Credit($all) {
+    $per = Get-CreditPeriod
+    $startU = $per.start.ToUniversalTime(); $nowU = (Get-Date).ToUniversalTime()
+    $baseAt = $null
+    if ($cfg.creditBaseAt) { $baseAt = [datetime]::Parse($cfg.creditBaseAt, $inv, 'RoundtripKind').ToUniversalTime(); if ($baseAt -lt $startU) { $baseAt = $null } }
+    $items = @($all | Where-Object { $_.t -ge $startU.AddDays(-7) })
+    $wStart = $null; $wTok = 0; $weekTok = 0; $q = 0; $spent = 0.0; $lastHour = 0.0
+    foreach ($i in $items) {
+        if (-not $wStart -or $i.t -ge $wStart.AddHours(5)) { $wStart = $i.t; $wTok = 0 }
+        while ($items[$q].t -lt $i.t.AddDays(-7)) { $weekTok -= $items[$q].n; $q++ }
+        $extra = $wTok -ge $cfg.sessionLimit -or $weekTok -ge $cfg.weeklyLimit
+        $wTok += $i.n; $weekTok += $i.n
+        if (-not $extra -or $i.t -lt $startU) { continue }
+        if ($i.t -ge $nowU.AddHours(-1)) { $lastHour += $i.cost }
+        if (-not $baseAt -or $i.t -gt $baseAt) { $spent += $i.cost }
+    }
+    if ($baseAt) { $spent += [double]$cfg.creditBase }
+    $elapsed = ((Get-Date) - $per.start).TotalDays; $length = ($per.end - $per.start).TotalDays
+    $forecast = if ($elapsed -ge 1) { $spent * $length / $elapsed } else { $spent }
+    [pscustomobject]@{ spent = $spent; perHour = $lastHour; forecast = $forecast; end = $per.end }
+}
+
+# Exchange rates from Norges Bank, fetched once a day. The download runs as a .NET task and
+# Refresh (on the UI thread) picks up the result, so no PowerShell code runs on a worker thread.
+[Net.ServicePointManager]::SecurityProtocol = [Net.ServicePointManager]::SecurityProtocol -bor [Net.SecurityProtocolType]::Tls12
+$script:fxTask = $null; $script:http = $null
+$localCurrency = @{ no = 'NOK'; sv = 'SEK'; da = 'DKK' }
+function Update-Fx {
+    $today = (Get-Date).ToString('yyyy-MM-dd', $inv)
+    if ($script:fxTask -and $script:fxTask.IsCompleted) {
+        try {
+            $r = $script:fxTask.Result | ConvertFrom-Json; $st = $r.data.structure
+            $dims = @($st.dimensions.series); $pos = [array]::IndexOf(@($dims | ForEach-Object { $_.id }), 'BASE_CUR')
+            $curs = @($dims[$pos].values | ForEach-Object { $_.id })
+            $multIdx = [array]::IndexOf(@($st.attributes.series | ForEach-Object { $_.id }), 'UNIT_MULT')
+            $nok = @{ NOK = 1.0 }
+            foreach ($p in $r.data.dataSets[0].series.psobject.Properties) {
+                $obs = @($p.Value.observations.psobject.Properties | Sort-Object { [int]$_.Name })[-1].Value
+                $mult = 0; if ($multIdx -ge 0 -and $null -ne $p.Value.attributes[$multIdx]) { $mult = [int]$st.attributes.series[$multIdx].values[$p.Value.attributes[$multIdx]].id }
+                $nok[$curs[[int]($p.Name -split ':')[$pos]]] = [double]::Parse($obs[0], $inv) / [math]::Pow(10, $mult)
+            }
+            # Local currency per USD
+            $cfg.fx = [pscustomobject]@{ NOK = $nok.USD; SEK = $nok.USD / $nok.SEK; DKK = $nok.USD / $nok.DKK }
+            $cfg.fxDate = $today; Save-Config
+        } catch {}
+        $script:fxTask = $null
+    }
+    if (-not $script:fxTask -and $cfg.fxDate -ne $today -and $localCurrency[$cfg.language]) {
+        if (-not $script:http) { $script:http = New-Object Net.Http.HttpClient; $script:http.Timeout = [TimeSpan]::FromSeconds(15) }
+        $script:fxTask = $script:http.GetStringAsync('https://data.norges-bank.no/api/data/EXR/B.USD+SEK+DKK.NOK.SP?format=sdmx-json&lastNObservations=1')
+    }
+}
+function Usd([double]$v) { '$' + $v.ToString('0.00', [Globalization.CultureInfo]::CurrentCulture) }
+function Local([double]$v) {
+    $c = $localCurrency[$cfg.language]; if (-not $c -or -not $cfg.fx -or -not $cfg.fx.$c) { return $null }
+    '{0:N0} kr' -f ($v * $cfg.fx.$c)
+}
+function Duration([double]$minutes) {
+    $m = [int][math]::Max(1, $minutes); $h = if ($cfg.language -in 'no', 'da') { 't' } else { 'h' }
+    if ($m -ge 60) { '{0}{1} {2:00}m' -f [math]::Floor($m / 60), $h, ($m % 60) } else { "${m}m" }
 }
 
 # --- History ----------------------------------------------------------------
@@ -208,7 +338,20 @@ function ModelName($m) {
         <TextBlock Name="wLabel" Foreground="#EEE" FontSize="12"/>
         <ProgressBar Name="wBar" Height="6" Maximum="100" Margin="0,3,0,2" Background="#333" BorderThickness="0" Foreground="#6A9BCC"/>
         <TextBlock Name="wSub" Foreground="#999" FontSize="11" TextWrapping="Wrap"/>
-        <TextBlock Name="overHint" Foreground="#E5484D" FontSize="11" TextWrapping="Wrap" Margin="0,8,0,0" Visibility="Collapsed"/>
+        <Border Name="cBox" Margin="0,10,0,0" Padding="0,8,0,0" BorderBrush="#3A3A3A" BorderThickness="0,1,0,0" Visibility="Collapsed">
+          <StackPanel>
+            <TextBlock Name="cLabel" Foreground="#EEE" FontSize="12"/>
+            <!-- Solid part: used so far. Faint part: forecast for the whole period. -->
+            <Grid Name="cTrack" Width="222" Height="8" Margin="0,3,0,2" Background="#333" HorizontalAlignment="Left">
+              <Rectangle Name="cFore" HorizontalAlignment="Left" RadiusX="2" RadiusY="2"/>
+              <Rectangle Name="cUsed" HorizontalAlignment="Left" RadiusX="2" RadiusY="2"/>
+            </Grid>
+            <TextBlock Name="cSub" Foreground="#999" FontSize="11" TextWrapping="Wrap"/>
+            <TextBlock Name="cFc" Foreground="#999" FontSize="11" TextWrapping="Wrap"/>
+            <TextBlock Name="cStatus" FontSize="11" TextWrapping="Wrap" Margin="0,4,0,0"/>
+          </StackPanel>
+        </Border>
+        <TextBlock Name="overHint" Foreground="#E0B050" FontSize="11" TextWrapping="Wrap" Margin="0,8,0,0" Visibility="Collapsed"/>
       </StackPanel>
       <StackPanel Name="histPanel" Visibility="Collapsed">
         <DockPanel>
@@ -233,7 +376,7 @@ function ModelName($m) {
 '@
 $win = [Windows.Markup.XamlReader]::Load((New-Object System.Xml.XmlNodeReader $xaml))
 $el = @{}
-'root','title','tabNow','tabHist','nowPanel','histPanel','sLabel','sBar','sSub','wLabel','wBar','wSub','overHint','upd',
+'root','title','tabNow','tabHist','nowPanel','histPanel','sLabel','sBar','sSub','wLabel','wBar','wSub','overHint','upd','cBox','cLabel','cTrack','cFore','cUsed','cSub','cFc','cStatus',
 'rangePanel','hDaily','cDaily','hTotal','hToday','cToday','hTodayTotal','hModels','pModels','hProjects','pProjects','hSince' | ForEach-Object { $el[$_] = $win.FindName($_) }
 $win.Left = $cfg.left; $win.Top = $cfg.top; $win.Topmost = [bool]$cfg.topmost
 $script:last = $null
@@ -375,7 +518,49 @@ function Set-Meter($label, $bar, $sub, $text, $pct, $color) {
     $label.Foreground = Brush $(if ($over) { '#E5484D' } else { '#EEE' })
     $sub.Foreground = Brush $(if ($over) { '#EE8A8D' } else { '#999' })
 }
+function Draw-Credit($c, $u) {
+    $limit = [double]$cfg.creditLimit; $spent = $c.spent; $left = [math]::Max(0.0, $limit - $spent); $frac = $spent / $limit
+    $color = if ($frac -ge 1) { '#E5484D' } elseif ($frac -ge 0.75) { '#E0B050' } else { '#8FB573' }
+    $el.cBox.Visibility = 'Visible'
+    $el.cLabel.Text = (T 'cLabel') -f (Usd $spent), (Usd $limit)
+    $el.cLabel.Foreground = Brush $(if ($frac -ge 1) { '#E5484D' } else { '#EEE' })
+    $w = $el.cTrack.Width
+    $el.cUsed.Width = $w * [math]::Min(1, $frac); $el.cUsed.Fill = Brush $color
+    $over = $c.forecast -gt $limit
+    $el.cFore.Width = $w * [math]::Min(1, $c.forecast / $limit); $el.cFore.Fill = Brush $(if ($over) { '#E5484D' } else { $color }); $el.cFore.Opacity = 0.35
+    $resetDate = $c.end.ToString('d. MMM')
+    $leftTxt = Usd $left; $l = Local $left; if ($l) { $leftTxt += " (≈ $l)" }
+    $el.cSub.Text = if (Local $spent) { (T 'cSubLocal') -f ('≈ ' + (Local $spent)), $leftTxt, $resetDate } else { (T 'cSub') -f $leftTxt, $resetDate }
+    $fc = Usd $c.forecast; $l = Local $c.forecast; if ($l) { $fc += " (≈ $l)" }
+    $el.cFc.Text = (T 'cForecast') -f $fc
+    $el.cFc.Foreground = Brush $(if ($over) { '#EE8A8D' } else { '#999' })
+    $el.cFc.Visibility = $(if ($spent -gt 0) { 'Visible' } else { 'Collapsed' })
+
+    # What happens next, in plain words
+    $nowL = Get-Date
+    $sessOver = $u.session -ge $cfg.sessionLimit; $weekOver = $u.week -ge $cfg.weeklyLimit
+    $toReset = if ($u.reset) { ($u.reset - $nowL.ToUniversalTime()).TotalMinutes } else { 0 }
+    if ($left -le 0 -and ($sessOver -or $weekOver)) {
+        $status = (T 'cStopped') -f $(if ($weekOver) { T 'cWeek' } else { T 'cSession' }); $sc = '#E5484D'
+    } elseif ($sessOver -or $weekOver) {
+        $sc = '#E0B050'
+        if ($c.perHour -gt 0) {
+            $toEmpty = 60 * $left / $c.perHour
+            $status = (T 'cUsing') -f (Usd $c.perHour)
+            if (-not $weekOver -and $u.reset -and $toReset -lt $toEmpty) { $status += (T 'cResetFirst') -f (Duration $toReset) }
+            else { $status += (T 'cEmpty') -f (Duration $toEmpty), $nowL.AddMinutes($toEmpty).ToString('HH:mm') }
+        } else { $status = T 'cOverIdle' }
+    } else {
+        $sc = '#8FB573'; $status = T 'cOk'
+        if ($u.reset -and $u.hourTok -gt 0) {
+            $toLimit = 60 * ($cfg.sessionLimit - $u.session) / $u.hourTok
+            if ($toLimit -lt $toReset) { $status = (T 'cOkEta') -f (Duration $toLimit), $nowL.AddMinutes($toLimit).ToString('HH:mm') }
+        }
+    }
+    $el.cStatus.Text = $status; $el.cStatus.Foreground = Brush $sc
+}
 function Refresh {
+    Update-Fx
     $all = Update-Data
     Update-History $all
     $u = Get-Usage $all; $script:last = $u
@@ -390,8 +575,15 @@ function Refresh {
     $el.wSub.Text = Get-UsedText $u.week $cfg.weeklyLimit
     Set-Meter $el.sLabel $el.sBar $el.sSub ((T 'session') -f $sp) $sp '#D97757'
     Set-Meter $el.wLabel $el.wBar $el.wSub ((T 'week') -f $wp) $wp '#6A9BCC'
-    $el.overHint.Text = T 'overHint'
-    $el.overHint.Visibility = $(if ($sp -gt 100 -or $wp -gt 100) { 'Visible' } else { 'Collapsed' })
+    $uncalibrated = [int64]$cfg.sessionLimit -eq 1000000 -and [int64]$cfg.weeklyLimit -eq 15000000
+    if ([double]$cfg.creditLimit -gt 0) {
+        Draw-Credit (Get-Credit $all) $u
+        $el.overHint.Text = T 'calHint'; $show = $uncalibrated
+    } else {
+        $el.cBox.Visibility = 'Collapsed'
+        $el.overHint.Text = T 'overHint'; $show = $sp -gt 100 -or $wp -gt 100
+    }
+    $el.overHint.Visibility = $(if ($show) { 'Visible' } else { 'Collapsed' })
     $el.upd.Text = (T 'updated') -f (Get-Date -Format t)
     if ($cfg.tab -eq 'history') { Draw-History }
 }
@@ -417,6 +609,21 @@ AddItem 'mCalSession' { Calibrate 'session' } | Out-Null
 AddItem 'mCalWeekly' { Calibrate 'weekly' } | Out-Null
 AddItem 'mSetSession' { SetLimit 'session' } | Out-Null
 AddItem 'mSetWeekly' { SetLimit 'weekly' } | Out-Null
+$creditMenu = AddItem 'mCredit' {}
+AddItem 'mCreditLimit' {
+    $v = Ask (T 'askCreditLimit') $cfg.creditLimit
+    if ($null -ne ($v -replace ',', '.' -as [double])) { $cfg.creditLimit = [double]::Parse(($v -replace ',', '.'), $inv); Save-Config; Refresh }
+} $creditMenu | Out-Null
+AddItem 'mCreditSpent' {
+    $v = Ask (T 'askCreditSpent') ''
+    if ($v -and $null -ne ($v -replace ',', '.' -as [double])) {
+        $cfg.creditBase = [double]::Parse(($v -replace ',', '.'), $inv); $cfg.creditBaseAt = (Get-Date).ToUniversalTime().ToString('o'); Save-Config; Refresh
+    }
+} $creditMenu | Out-Null
+AddItem 'mCreditDay' {
+    $v = Ask (T 'askCreditDay') $cfg.creditResetDay
+    if ($v -as [int] -and [int]$v -ge 1 -and [int]$v -le 28) { $cfg.creditResetDay = [int]$v; Save-Config; Refresh }
+} $creditMenu | Out-Null
 $top = AddItem 'mTopmost' { $win.Topmost = -not $win.Topmost; $this.IsChecked = $win.Topmost; $cfg.topmost = $win.Topmost; Save-Config }
 $top.IsChecked = $win.Topmost
 $langMenu = AddItem 'mLanguage' {}
