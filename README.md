@@ -28,8 +28,6 @@ irm https://raw.githubusercontent.com/saysphilippe/ClaudeUsage/main/install.ps1 
 
 Or download [`Install.cmd`](Install.cmd) and double-click it.
 
-> This option downloads the files from GitHub, so it only works while the repository is **public**.
-
 ### Option 2 – install from a downloaded copy
 
 1. Download the repository (**Code → Download ZIP**, then extract it) or clone it:
@@ -90,7 +88,7 @@ This stops the widget and removes its files, shortcuts and settings.
 
 Claude Usage er en liten widget for Windows-skrivebordet som viser hvor mye av Claude Code-kvoten din du har brukt: den nåværende 5-timers økten og de siste 7 dagene. Den leser bare de lokale loggfilene til Claude Code og sender ingenting noe sted. Widgeten logger aldri inn på Claude og inneholder ingen påloggingsdata, så den viser alltid forbruket til den som er logget inn i Claude Code på din egen PC – aldri utviklerens eller andres.
 
-**Installering:** Kjør `irm https://raw.githubusercontent.com/saysphilippe/ClaudeUsage/main/install.ps1 | iex` i PowerShell (fungerer bare når repoet er offentlig). Du kan også laste ned repoet og kjøre `powershell -NoProfile -ExecutionPolicy Bypass -File .\install.ps1` i mappen. Velg **2) Norsk** når installasjonsprogrammet spør om språk.
+**Installering:** Kjør `irm https://raw.githubusercontent.com/saysphilippe/ClaudeUsage/main/install.ps1 | iex` i PowerShell, eller last ned og dobbeltklikk `Install.cmd`. Du kan også laste ned repoet og kjøre `powershell -NoProfile -ExecutionPolicy Bypass -File .\install.ps1` i mappen. Velg **2) Norsk** når installasjonsprogrammet spør om språk.
 
 **Bruk:** Dra widgeten for å flytte den, og høyreklikk den for å se valgene. Velg «Kalibrer … fra /usage-%» og skriv inn prosenten som `/usage` viser i Claude Code, så stemmer tallene med Claude sine. Under «Språk» kan du bytte mellom norsk og engelsk.
 
