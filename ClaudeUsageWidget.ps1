@@ -1,15 +1,39 @@
-# Claude usage desktop widget - reads local Claude Code logs (~/.claude/projects/*.jsonl)
+﻿# Claude usage desktop widget - reads local Claude Code logs (~/.claude/projects/*.jsonl)
 Add-Type -AssemblyName PresentationFramework, PresentationCore, WindowsBase, Microsoft.VisualBasic
 
 $dir     = Split-Path -Parent $MyInvocation.MyCommand.Path
 $cfgPath = Join-Path $dir 'config.json'
 $logRoot = Join-Path $env:USERPROFILE '.claude\projects'
 
-$cfg = [ordered]@{ sessionLimit = 1000000; weeklyLimit = 15000000; topmost = $true; left = 100; top = 100 }
+$cfg = [ordered]@{ sessionLimit = 1000000; weeklyLimit = 15000000; topmost = $true; left = 100; top = 100; language = 'en' }
 if (Test-Path $cfgPath) {
     try { (Get-Content $cfgPath -Raw | ConvertFrom-Json).psobject.Properties | ForEach-Object { $cfg[$_.Name] = $_.Value } } catch {}
 }
 function Save-Config { $cfg | ConvertTo-Json | Set-Content $cfgPath -Encoding UTF8 }
+
+$strings = @{
+    en = @{
+        title = 'Claude usage'; session = '5-hour session: {0:0}%'; resets = ' · resets in {0}h {1:00}m'
+        usedLeft = '{0} used · {1} left'; week = 'Last 7 days: {0:0}%'; updated = 'Updated {0} · right-click for options'
+        sessionName = '5-hour'; weeklyName = 'weekly'
+        askCalibrate = 'Run /usage in Claude Code and enter the % shown for the {0} limit:'
+        askLimit = 'Token limit for the {0} window:'
+        mRefresh = 'Refresh now'; mCalSession = 'Calibrate 5-hour limit from /usage %…'; mCalWeekly = 'Calibrate weekly limit from /usage %…'
+        mSetSession = 'Set 5-hour limit manually…'; mSetWeekly = 'Set weekly limit manually…'
+        mTopmost = 'Always on top'; mLanguage = 'Language'; mClose = 'Close'
+    }
+    no = @{
+        title = 'Claude-forbruk'; session = '5-timers økt: {0:0}%'; resets = ' · nullstilles om {0}t {1:00}m'
+        usedLeft = '{0} brukt · {1} igjen'; week = 'Siste 7 dager: {0:0}%'; updated = 'Oppdatert {0} · høyreklikk for valg'
+        sessionName = '5-timers'; weeklyName = 'ukentlige'
+        askCalibrate = 'Kjør /usage i Claude Code og skriv inn prosenten som vises for den {0} grensen:'
+        askLimit = 'Tokengrense for det {0} vinduet:'
+        mRefresh = 'Oppdater nå'; mCalSession = 'Kalibrer 5-timersgrensen fra /usage-%…'; mCalWeekly = 'Kalibrer ukegrensen fra /usage-%…'
+        mSetSession = 'Angi 5-timersgrensen manuelt…'; mSetWeekly = 'Angi ukegrensen manuelt…'
+        mTopmost = 'Alltid øverst'; mLanguage = 'Språk'; mClose = 'Lukk'
+    }
+}
+function T($key) { $s = $strings[$cfg.language]; if (-not $s) { $s = $strings.en }; $s[$key] }
 
 function Get-Usage {
     $since = (Get-Date).ToUniversalTime().AddDays(-7)
@@ -48,7 +72,7 @@ function Fmt([double]$n) { if ($n -ge 1e6) { '{0:0.0}M' -f ($n/1e6) } elseif ($n
         ShowInTaskbar="False" SizeToContent="WidthAndHeight" ResizeMode="NoResize">
   <Border CornerRadius="10" Background="#E61E1E1E" Padding="14,10" Width="250">
     <StackPanel>
-      <TextBlock Text="Claude usage" Foreground="#D97757" FontWeight="SemiBold" FontSize="13" Margin="0,0,0,6"/>
+      <TextBlock Name="title" Foreground="#D97757" FontWeight="SemiBold" FontSize="13" Margin="0,0,0,6"/>
       <TextBlock Name="sLabel" Foreground="#EEE" FontSize="12"/>
       <ProgressBar Name="sBar" Height="6" Maximum="100" Margin="0,3,0,2" Background="#333" BorderThickness="0" Foreground="#D97757"/>
       <TextBlock Name="sSub" Foreground="#999" FontSize="11" Margin="0,0,0,8"/>
@@ -61,7 +85,7 @@ function Fmt([double]$n) { if ($n -ge 1e6) { '{0:0.0}M' -f ($n/1e6) } elseif ($n
 </Window>
 '@
 $win = [Windows.Markup.XamlReader]::Load((New-Object System.Xml.XmlNodeReader $xaml))
-$el = @{}; 'sLabel','sBar','sSub','wLabel','wBar','wSub','upd' | ForEach-Object { $el[$_] = $win.FindName($_) }
+$el = @{}; 'title','sLabel','sBar','sSub','wLabel','wBar','wSub','upd' | ForEach-Object { $el[$_] = $win.FindName($_) }
 $win.Left = $cfg.left; $win.Top = $cfg.top; $win.Topmost = [bool]$cfg.topmost
 $script:last = $null
 
@@ -69,40 +93,53 @@ function Refresh {
     $u = Get-Usage; $script:last = $u
     $sp = [math]::Min(100, 100 * $u.session / [double]$cfg.sessionLimit)
     $wp = [math]::Min(100, 100 * $u.week / [double]$cfg.weeklyLimit)
-    $el.sLabel.Text = "5-hour session: {0:0}%" -f $sp
+    $el.title.Text = T 'title'
+    $el.sLabel.Text = (T 'session') -f $sp
     $el.sBar.Value = $sp
     $rem = [math]::Max(0, $cfg.sessionLimit - $u.session)
-    $resetTxt = if ($u.reset) { $m = [int]($u.reset - (Get-Date).ToUniversalTime()).TotalMinutes; " · resets in {0}h {1:00}m" -f [math]::Floor($m/60), ($m % 60) } else { '' }
-    $el.sSub.Text = "$(Fmt $u.session) used · $(Fmt $rem) left$resetTxt"
-    $el.wLabel.Text = "Last 7 days: {0:0}%" -f $wp
+    $resetTxt = if ($u.reset) { $m = [int]($u.reset - (Get-Date).ToUniversalTime()).TotalMinutes; (T 'resets') -f [math]::Floor($m/60), ($m % 60) } else { '' }
+    $el.sSub.Text = ((T 'usedLeft') -f (Fmt $u.session), (Fmt $rem)) + $resetTxt
+    $el.wLabel.Text = (T 'week') -f $wp
     $el.wBar.Value = $wp
-    $el.wSub.Text = "$(Fmt $u.week) used · $(Fmt ([math]::Max(0, $cfg.weeklyLimit - $u.week))) left"
-    $el.upd.Text = "Updated $(Get-Date -Format t) · right-click for options"
+    $el.wSub.Text = (T 'usedLeft') -f (Fmt $u.week), (Fmt ([math]::Max(0, $cfg.weeklyLimit - $u.week)))
+    $el.upd.Text = (T 'updated') -f (Get-Date -Format t)
 }
 
-function Ask($prompt, $default) { [Microsoft.VisualBasic.Interaction]::InputBox($prompt, 'Claude usage widget', "$default") }
+function Ask($prompt, $default) { [Microsoft.VisualBasic.Interaction]::InputBox($prompt, (T 'title'), "$default") }
 function Calibrate($which) {
     $used = if ($which -eq 'session') { $script:last.session } else { $script:last.week }
-    $p = Ask "Run /usage in Claude Code and enter the % shown for the $which limit:" ''
+    $p = Ask ((T 'askCalibrate') -f (T "$($which)Name")) ''
     if ($p -as [double] -and [double]$p -gt 0 -and $used -gt 0) {
         $cfg["$($which)Limit"] = [int64]($used * 100 / [double]$p); Save-Config; Refresh
     }
 }
 function SetLimit($which) {
-    $v = Ask "Token limit for the $which window:" $cfg["$($which)Limit"]
+    $v = Ask ((T 'askLimit') -f (T "$($which)Name")) $cfg["$($which)Limit"]
     if ($v -as [int64]) { $cfg["$($which)Limit"] = [int64]$v; Save-Config; Refresh }
 }
 
 $menu = New-Object Windows.Controls.ContextMenu
-function AddItem($text, $action) { $mi = New-Object Windows.Controls.MenuItem; $mi.Header = $text; $mi.Add_Click($action); [void]$menu.Items.Add($mi); $mi }
-AddItem 'Refresh now' { Refresh } | Out-Null
-AddItem 'Calibrate 5-hour limit from /usage %…' { Calibrate 'session' } | Out-Null
-AddItem 'Calibrate weekly limit from /usage %…' { Calibrate 'weekly' } | Out-Null
-AddItem 'Set 5-hour limit manually…' { SetLimit 'session' } | Out-Null
-AddItem 'Set weekly limit manually…' { SetLimit 'weekly' } | Out-Null
-$top = AddItem 'Always on top' { $win.Topmost = -not $win.Topmost; $this.IsChecked = $win.Topmost; $cfg.topmost = $win.Topmost; Save-Config }
+$menuItems = @{}
+function AddItem($key, $action, $parent = $menu) { $mi = New-Object Windows.Controls.MenuItem; $mi.Add_Click($action); [void]$parent.Items.Add($mi); if ($key) { $menuItems[$key] = $mi }; $mi }
+AddItem 'mRefresh' { Refresh } | Out-Null
+AddItem 'mCalSession' { Calibrate 'session' } | Out-Null
+AddItem 'mCalWeekly' { Calibrate 'weekly' } | Out-Null
+AddItem 'mSetSession' { SetLimit 'session' } | Out-Null
+AddItem 'mSetWeekly' { SetLimit 'weekly' } | Out-Null
+$top = AddItem 'mTopmost' { $win.Topmost = -not $win.Topmost; $this.IsChecked = $win.Topmost; $cfg.topmost = $win.Topmost; Save-Config }
 $top.IsChecked = $win.Topmost
-AddItem 'Close' { $win.Close() } | Out-Null
+$langMenu = AddItem 'mLanguage' {}
+$langItems = @{}
+foreach ($code in 'en', 'no') {
+    $li = AddItem $null { $cfg.language = $this.Tag; Save-Config; Set-MenuText; Refresh } $langMenu
+    $li.Tag = $code; $li.Header = @{ en = 'English'; no = 'Norsk' }[$code]; $langItems[$code] = $li
+}
+AddItem 'mClose' { $win.Close() } | Out-Null
+function Set-MenuText {
+    foreach ($k in $menuItems.Keys) { $menuItems[$k].Header = T $k }
+    foreach ($c in $langItems.Keys) { $langItems[$c].IsChecked = ($c -eq $cfg.language) }
+}
+Set-MenuText
 $win.ContextMenu = $menu
 
 $win.Add_MouseLeftButtonDown({ $win.DragMove(); $cfg.left = $win.Left; $cfg.top = $win.Top; Save-Config })

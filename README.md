@@ -1,0 +1,95 @@
+# Claude Usage widget
+
+A small always-on-top Windows desktop widget that shows how much of your Claude Code usage you have spent:
+
+- **5-hour session** – tokens used in the current 5-hour window, how much is left, and when it resets
+- **Last 7 days** – tokens used over the past week
+
+It reads the local Claude Code logs in `%USERPROFILE%\.claude\projects`. Nothing is sent anywhere, and no API key or login is needed.
+
+The widget can show its text in **English** or **Norwegian (Norsk)**. You choose the language during installation and can change it later from the right-click menu.
+
+## Requirements
+
+- Windows 10 or 11 (uses the built-in Windows PowerShell 5.1 – nothing extra to install)
+- Claude Code, used on the same PC
+
+## Install
+
+### Option 1 – one-line install
+
+Open PowerShell and run:
+
+```powershell
+irm https://raw.githubusercontent.com/saysphilippe/ClaudeUsage/main/install.ps1 | iex
+```
+
+Or download [`Install.cmd`](Install.cmd) and double-click it.
+
+> This option downloads the files from GitHub, so it only works while the repository is **public**.
+
+### Option 2 – install from a downloaded copy
+
+1. Download the repository (**Code → Download ZIP**, then extract it) or clone it:
+   ```powershell
+   git clone https://github.com/saysphilippe/ClaudeUsage.git
+   ```
+2. In that folder, run:
+   ```powershell
+   powershell -NoProfile -ExecutionPolicy Bypass -File .\install.ps1
+   ```
+
+### What the installer does
+
+1. Asks which language the widget should use:
+   ```
+   Choose display language / Velg språk:
+     1) English
+     2) Norsk
+   ```
+   To skip the question (for example in a script), set the language first: `$env:CLAUDEUSAGE_LANG = 'no'` (or `'en'`).
+2. Copies the widget to `%LOCALAPPDATA%\ClaudeUsage`.
+3. Adds a **Claude Usage** shortcut to your Desktop and Startup folder, so the widget starts when you log in.
+4. Starts the widget.
+
+Running the installer again updates the widget and keeps your settings (limits, position, language).
+
+## Using the widget
+
+- **Move it:** drag it with the left mouse button.
+- **Options:** right-click it.
+
+| Menu item | What it does |
+|---|---|
+| Refresh now | Re-reads the logs (this also happens automatically every minute) |
+| Calibrate 5-hour / weekly limit from /usage % | Run `/usage` in Claude Code and type the percentage it shows. The widget then works out your real limit, so its percentages match Claude's. |
+| Set 5-hour / weekly limit manually | Enter a token limit directly |
+| Always on top | Keeps the widget above other windows |
+| Language | Switches between English and Norsk immediately |
+| Close | Closes the widget until next login or until you start it from the Desktop shortcut |
+
+Settings are saved in `%LOCALAPPDATA%\ClaudeUsage\config.json`.
+
+> The percentages are estimates based on your local logs. Calibrate them against `/usage` for the best accuracy.
+
+## Uninstall
+
+Double-click [`Uninstall.cmd`](Uninstall.cmd), or run:
+
+```powershell
+powershell -NoProfile -ExecutionPolicy Bypass -File "$env:LOCALAPPDATA\ClaudeUsage\uninstall.ps1"
+```
+
+This stops the widget and removes its files, shortcuts and settings.
+
+---
+
+## Norsk
+
+Claude Usage er en liten widget for Windows-skrivebordet som viser hvor mye av Claude Code-kvoten din du har brukt: den nåværende 5-timers økten og de siste 7 dagene. Den leser bare de lokale loggfilene til Claude Code og sender ingenting noe sted.
+
+**Installering:** Kjør `irm https://raw.githubusercontent.com/saysphilippe/ClaudeUsage/main/install.ps1 | iex` i PowerShell (fungerer bare når repoet er offentlig). Du kan også laste ned repoet og kjøre `powershell -NoProfile -ExecutionPolicy Bypass -File .\install.ps1` i mappen. Velg **2) Norsk** når installasjonsprogrammet spør om språk.
+
+**Bruk:** Dra widgeten for å flytte den, og høyreklikk den for å se valgene. Velg «Kalibrer … fra /usage-%» og skriv inn prosenten som `/usage` viser i Claude Code, så stemmer tallene med Claude sine. Under «Språk» kan du bytte mellom norsk og engelsk.
+
+**Avinstallering:** Dobbeltklikk `Uninstall.cmd`.
