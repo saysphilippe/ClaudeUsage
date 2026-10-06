@@ -37,6 +37,11 @@ $strings = @{
         cForecast = 'Forecast for this period: {0}'; cSession = 'session'; cWeek = 'weekly limit'
         cTooHigh = 'Claude is still answering, so the estimate is too high. Enter the amount from claude.ai (right-click → Extra credits) and calibrate the limits from /usage.'
         weekFixed = 'Weekly limit: {0:0}%'; weekResets = ' · resets {0}'; mWeekReset = 'Set when the weekly limit resets…'
+        paceTitle = 'Pace this week'; liveAt = 'figures from Claude Code {0}'
+        paceAhead = 'Faster than an even pace (+{0:0}%). At this pace the weekly limit is reached {1}.'
+        paceOk = 'Within an even pace ({0:+0;-0;0}%). You can use ~{1} per day until {2}.'
+        paceFull = 'The weekly limit is reached. It resets {0}.'
+        paceTip = 'Grey dashed: even pace to the reset · blue: your usage · dashed: forecast at your average pace so far'
         askWeekReset = 'When does the weekly limit reset? Copy it from /usage (e.g. "Oct 9, 3pm") or type day and time (e.g. "Thu 15:00"):'
         badTime = 'Could not read that time. Try for example "Thu 15:00" or "09.10 15:00".'
         calHint = 'The limits are not calibrated, so the credit estimate may be wrong. Right-click → Calibrate from /usage.'
@@ -67,6 +72,11 @@ $strings = @{
         cForecast = 'Prognose for perioden: {0}'; cSession = 'økten'; cWeek = 'ukegrensen'
         cTooHigh = 'Claude svarer fortsatt, så anslaget er for høyt. Registrer beløpet fra claude.ai (høyreklikk → Ekstra kreditter) og kalibrer grensene fra /usage.'
         weekFixed = 'Ukegrense: {0:0}%'; weekResets = ' · nullstilles {0}'; mWeekReset = 'Angi når ukegrensen nullstilles…'
+        paceTitle = 'Tempo denne uken'; liveAt = 'tall fra Claude Code {0}'
+        paceAhead = 'Raskere enn jevnt tempo (+{0:0} %). Med dette tempoet er ukegrensen nådd {1}.'
+        paceOk = 'Innenfor jevnt tempo ({0:+0;-0;0} %). Du kan bruke ~{1} per dag frem til {2}.'
+        paceFull = 'Ukegrensen er nådd. Den nullstilles {0}.'
+        paceTip = 'Grå stiplet: jevnt tempo frem til nullstilling · blå: ditt forbruk · stiplet: prognose med snittempoet ditt så langt'
         askWeekReset = 'Når nullstilles ukegrensen? Kopier fra /usage (f.eks. «Oct 9, 3pm») eller skriv dag og klokkeslett (f.eks. «tor 15:00»):'
         badTime = 'Klarte ikke å lese tidspunktet. Prøv for eksempel «tor 15:00» eller «09.10 15:00».'
         calHint = 'Grensene er ikke kalibrert, så kreditt-anslaget kan bli feil. Høyreklikk → Kalibrer fra /usage.'
@@ -97,6 +107,11 @@ $strings = @{
         cForecast = 'Prognos för perioden: {0}'; cSession = 'sessionen'; cWeek = 'veckogränsen'
         cTooHigh = 'Claude svarar fortfarande, så uppskattningen är för hög. Ange beloppet från claude.ai (högerklicka → Extra krediter) och kalibrera gränserna från /usage.'
         weekFixed = 'Veckogräns: {0:0}%'; weekResets = ' · nollställs {0}'; mWeekReset = 'Ange när veckogränsen nollställs…'
+        paceTitle = 'Takt denna vecka'; liveAt = 'siffror från Claude Code {0}'
+        paceAhead = 'Snabbare än jämn takt (+{0:0} %). I den här takten nås veckogränsen {1}.'
+        paceOk = 'Inom jämn takt ({0:+0;-0;0} %). Du kan använda ~{1} per dag fram till {2}.'
+        paceFull = 'Veckogränsen är nådd. Den nollställs {0}.'
+        paceTip = 'Grå streckad: jämn takt fram till nollställning · blå: din användning · streckad: prognos med din genomsnittstakt hittills'
         askWeekReset = 'När nollställs veckogränsen? Kopiera från /usage (t.ex. "Oct 9, 3pm") eller skriv dag och tid (t.ex. "tor 15:00"):'
         badTime = 'Kunde inte läsa tiden. Prova till exempel "tor 15:00" eller "09.10 15:00".'
         calHint = 'Gränserna är inte kalibrerade, så kreditberäkningen kan bli fel. Högerklicka → Kalibrera från /usage.'
@@ -127,6 +142,11 @@ $strings = @{
         cForecast = 'Prognose for perioden: {0}'; cSession = 'sessionen'; cWeek = 'ugegrænsen'
         cTooHigh = 'Claude svarer stadig, så overslaget er for højt. Angiv beløbet fra claude.ai (højreklik → Ekstra kreditter) og kalibrér grænserne fra /usage.'
         weekFixed = 'Ugegrænse: {0:0}%'; weekResets = ' · nulstilles {0}'; mWeekReset = 'Angiv hvornår ugegrænsen nulstilles…'
+        paceTitle = 'Tempo denne uge'; liveAt = 'tal fra Claude Code {0}'
+        paceAhead = 'Hurtigere end jævnt tempo (+{0:0} %). I dette tempo nås ugegrænsen {1}.'
+        paceOk = 'Inden for jævnt tempo ({0:+0;-0;0} %). Du kan bruge ~{1} pr. dag frem til {2}.'
+        paceFull = 'Ugegrænsen er nået. Den nulstilles {0}.'
+        paceTip = 'Grå stiplet: jævnt tempo frem til nulstilling · blå: dit forbrug · stiplet: prognose med dit gennemsnitstempo indtil nu'
         askWeekReset = 'Hvornår nulstilles ugegrænsen? Kopiér fra /usage (f.eks. "Oct 9, 3pm") eller skriv dag og klokkeslæt (f.eks. "tor 15:00"):'
         badTime = 'Kunne ikke læse tidspunktet. Prøv f.eks. "tor 15:00" eller "09.10 15:00".'
         calHint = 'Grænserne er ikke kalibreret, så kreditoverslaget kan være forkert. Højreklik → Kalibrér fra /usage.'
@@ -237,16 +257,53 @@ function ConvertFrom-ResetText($text) {
     }
     $null
 }
+# The status line script (statusline.ps1) saves the exact usage Claude Code reports - the same
+# figures as /usage - to live.json. When present, the widget uses Claude's own windows and
+# recalibrates the limits from them, so no manual calibration is needed.
+$livePath = Join-Path $dir 'live.json'
+function Get-Live {
+    if (-not (Test-Path $livePath)) { return $null }
+    try { $l = Get-Content $livePath -Raw | ConvertFrom-Json } catch { return $null }
+    $o = @{ at = [datetime]::Parse($l.at, $inv, 'RoundtripKind').ToUniversalTime() }
+    foreach ($k in 'five_hour', 'seven_day') {
+        if ($l.$k) { $o[$k] = @{ pct = [double]$l.$k.pct; reset = [DateTimeOffset]::FromUnixTimeSeconds([int64]$l.$k.resets_at).UtcDateTime } }
+    }
+    $o
+}
+function Get-Tokens($items, $from, $to) { $sum = [int64]0; foreach ($i in $items) { if ($i.t -ge $from -and $i.t -le $to) { $sum += $i.n } }; $sum }
+# Limit = tokens Claude had seen when it reported the percentage. Small percentages are too coarse,
+# and Claude reports at most 100 %, so at 100 % the real usage may be higher and the last limit is kept.
+function Set-LiveLimit($which, $tokens, $pct) {
+    if ($pct -lt 3 -or $pct -ge 99.5 -or $tokens -le 0) { return $false }
+    $new = [int64]($tokens * 100 / $pct); $old = [double]$cfg["$($which)Limit"]
+    if ([math]::Abs($new - $old) / [math]::Max(1, $old) -gt 0.01) { $cfg["$($which)Limit"] = $new; $script:cfgDirty = $true }
+    $true
+}
 function Get-Usage($all) {
     $now = (Get-Date).ToUniversalTime()
     $recent = @($all | Where-Object { $_.t -ge $now.AddDays(-7) })
-    # 5-hour windows start at the first message after the previous window ended
-    $wStart = $null; $wTok = 0
-    foreach ($i in $recent) {
-        if (-not $wStart -or $i.t -ge $wStart.AddHours(5)) { $wStart = $i.t; $wTok = 0 }
-        $wTok += $i.n
+    $live = Get-Live; $sPct = $null; $wPct = $null
+    $f = if ($live) { $live.five_hour }
+    if ($f -and $f.reset -gt $now) {
+        $wStart = $f.reset.AddHours(-5); $reset = $f.reset
+        $wTok = Get-Tokens $recent $wStart $now
+        if (-not (Set-LiveLimit 'session' (Get-Tokens $recent $wStart $live.at) $f.pct)) { $sPct = $f.pct }
+    } else {
+        # 5-hour windows start at the first message after the previous window ended
+        $wStart = $null; $wTok = 0
+        foreach ($i in $recent) {
+            if (-not $wStart -or $i.t -ge $wStart.AddHours(5)) { $wStart = $i.t; $wTok = 0 }
+            $wTok += $i.n
+        }
+        if (-not $wStart -or $now -ge $wStart.AddHours(5)) { $wTok = 0; $reset = $null } else { $reset = $wStart.AddHours(5) }
     }
-    if (-not $wStart -or $now -ge $wStart.AddHours(5)) { $wTok = 0; $reset = $null } else { $reset = $wStart.AddHours(5) }
+    $sv = if ($live) { $live.seven_day }
+    if ($sv -and $sv.reset -gt $now) {
+        $iso = $sv.reset.ToString('o')
+        if ($cfg.weeklyReset -ne $iso) { $cfg.weeklyReset = $iso; $script:cfgDirty = $true }
+        if (-not (Set-LiveLimit 'weekly' (Get-Tokens $recent $sv.reset.AddDays(-7) $live.at) $sv.pct)) { $wPct = $sv.pct }
+    }
+    if ($script:cfgDirty) { Save-Config; $script:cfgDirty = $false }
     $anchor = Get-WeekAnchor; $weekReset = $null; $weekItems = $recent
     if ($anchor) {
         $ws = Get-WeekStart $now $anchor; $weekReset = $ws.AddDays(7)
@@ -255,7 +312,7 @@ function Get-Usage($all) {
     $week = ($weekItems | Measure-Object n -Sum).Sum; if (-not $week) { $week = 0 }
     # Tokens used in the current window during the last hour, for the "limit reached in ..." forecast
     $hourTok = 0; if ($reset) { foreach ($i in $recent) { if ($i.t -ge $wStart -and $i.t -ge $now.AddHours(-1)) { $hourTok += $i.n } } }
-    [pscustomobject]@{ session = $wTok; reset = $reset; week = $week; weekReset = $weekReset; hourTok = $hourTok }
+    [pscustomobject]@{ session = $wTok; reset = $reset; week = $week; weekReset = $weekReset; hourTok = $hourTok; sPct = $sPct; wPct = $wPct; liveAt = $(if ($live) { $live.at }) }
 }
 
 # --- Extra credits ----------------------------------------------------------
@@ -404,6 +461,11 @@ function ModelName($m) {
         <TextBlock Name="wLabel" Foreground="#EEE" FontSize="14"/>
         <ProgressBar Name="wBar" Height="8" Maximum="100" Margin="0,3,0,2" Background="#333" BorderThickness="0" Foreground="#6A9BCC"/>
         <TextBlock Name="wSub" Foreground="#999" FontSize="13" TextWrapping="Wrap"/>
+        <StackPanel Name="paceBox" Visibility="Collapsed">
+          <TextBlock Name="pTitle" Foreground="#EEE" FontSize="14" Margin="0,10,0,0"/>
+          <Canvas Name="cPace" Margin="0,4,0,0" Background="Transparent"/>
+          <TextBlock Name="pText" FontSize="13" TextWrapping="Wrap"/>
+        </StackPanel>
         <Border Name="cBox" Margin="0,10,0,0" Padding="0,8,0,0" BorderBrush="#3A3A3A" BorderThickness="0,1,0,0" Visibility="Collapsed">
           <StackPanel>
             <TextBlock Name="cLabel" Foreground="#EEE" FontSize="14"/>
@@ -435,14 +497,14 @@ function ModelName($m) {
         <StackPanel Name="pProjects" Margin="0,2,0,4"/>
         <TextBlock Name="hSince" Foreground="#666" FontSize="12"/>
       </StackPanel>
-      <TextBlock Name="upd" Foreground="#666" FontSize="12" Margin="0,6,0,0"/>
+      <TextBlock Name="upd" Foreground="#666" FontSize="12" Margin="0,6,0,0" TextWrapping="Wrap"/>
     </StackPanel>
   </Border>
 </Window>
 '@
 $win = [Windows.Markup.XamlReader]::Load((New-Object System.Xml.XmlNodeReader $xaml))
 $el = @{}
-'root','title','tabNow','tabHist','nowPanel','histPanel','sLabel','sBar','sSub','wLabel','wBar','wSub','overHint','upd','cBox','cLabel','cTrack','cFore','cUsed','cSub','cFc','cStatus',
+'root','title','tabNow','tabHist','nowPanel','histPanel','sLabel','sBar','sSub','wLabel','wBar','wSub','overHint','upd','paceBox','pTitle','cPace','pText','cBox','cLabel','cTrack','cFore','cUsed','cSub','cFc','cStatus',
 'rangePanel','hDaily','cDaily','hTotal','hToday','cToday','hTodayTotal','hModels','pModels','hProjects','pProjects','hSince' | ForEach-Object { $el[$_] = $win.FindName($_) }
 $win.Left = $cfg.left; $win.Top = $cfg.top; $win.Topmost = [bool]$cfg.topmost
 $script:last = $null
@@ -584,6 +646,62 @@ function Set-Meter($label, $bar, $sub, $text, $pct, $color) {
     $label.Foreground = Brush $(if ($over) { '#E5484D' } else { '#EEE' })
     $sub.Foreground = Brush $(if ($over) { '#EE8A8D' } else { '#999' })
 }
+function Add-Line($canvas, $pts, $color, $thick, $dash) {
+    $pl = New-Object Windows.Shapes.Polyline
+    foreach ($p in $pts) { [void]$pl.Points.Add((New-Object Windows.Point $p[0], $p[1])) }
+    $pl.Stroke = Brush $color; $pl.StrokeThickness = $thick; $pl.StrokeLineJoin = 'Round'
+    if ($dash) { $pl.StrokeDashArray = New-Object Windows.Media.DoubleCollection (, [double[]]$dash) }
+    [void]$canvas.Children.Add($pl)
+}
+# Weekly pace: usage so far against an even spread up to the reset, plus a forecast at the average
+# pace so far. Shows whether you will run out before the reset, or have tokens to spare.
+function Draw-Pace($all, $u, $wp) {
+    if (-not $u.weekReset) { $el.paceBox.Visibility = 'Collapsed'; return }
+    $el.paceBox.Visibility = 'Visible'; $el.pTitle.Text = T 'paceTitle'
+    $nowU = (Get-Date).ToUniversalTime(); $end = $u.weekReset; $start = $end.AddDays(-7)
+    $limit = [double]$cfg.weeklyLimit
+    # Scale the curve so it ends at the shown percentage (it also includes use outside Claude Code)
+    $scale = if ($u.week -gt 0) { $wp / (100 * $u.week / $limit) } else { 1 }
+    $c = $el.cPace; $c.Children.Clear(); $W = $el.cTrack.Width; $H = 60; $top = 16
+    $c.Width = $W; $c.Height = $top + $H + 16; $c.ToolTip = T 'paceTip'
+    $elapsed = [math]::Max(0.5, ($nowU - $start).TotalHours); $leftH = ($end - $nowU).TotalHours
+    $rate = $wp / $elapsed
+    $proj = $wp + $rate * $leftH
+    $maxY = [math]::Min(200, [math]::Max(100, [math]::Max($wp, $proj)))
+    $X = { param($t) $W * ($t - $start).TotalHours / 168 }
+    $Y = { param($p) $top + $H - $H * [math]::Min($p, $maxY) / $maxY }
+    # 100 % line, even pace and "now"
+    Add-Line $c @(@(0, (& $Y 100)), @($W, (& $Y 100))) '#444' 1 $null
+    Add-Line $c @(@(0, (& $Y 0)), @($W, (& $Y 100))) '#777' 1.5 @(3, 3)
+    $xn = & $X $nowU
+    Add-Line $c @(@($xn, $top), @($xn, ($top + $H))) '#3A3A3A' 1 $null
+    # Usage so far
+    $pts = New-Object System.Collections.Generic.List[object]; $pts.Add(@(0, (& $Y 0))); $cum = 0.0
+    foreach ($i in $all) {
+        if ($i.t -lt $start -or $i.t -gt $nowU) { continue }
+        $cum += $i.n; $pts.Add(@((& $X $i.t), (& $Y (100 * $cum / $limit * $scale))))
+    }
+    $pts.Add(@($xn, (& $Y $wp)))
+    Add-Line $c $pts.ToArray() '#6A9BCC' 2 $null
+    # Forecast
+    $tc = (Get-Date).ToLocalTime()
+    if ($wp -ge 100) {
+        $el.pText.Text = (T 'paceFull') -f $end.ToLocalTime().ToString('ddd HH:mm'); $el.pText.Foreground = Brush '#EE8A8D'
+    } elseif ($proj -gt 100) {
+        $hit = $nowU.AddHours((100 - $wp) / $rate)
+        Add-Line $c @(@($xn, (& $Y $wp)), @((& $X $hit), (& $Y 100))) '#E5484D' 1.5 @(2, 2)
+        $el.pText.Text = (T 'paceAhead') -f ($wp - 100 * ($nowU - $start).TotalHours / 168), $hit.ToLocalTime().ToString('ddd HH:mm')
+        $el.pText.Foreground = Brush '#EE8A8D'
+    } else {
+        Add-Line $c @(@($xn, (& $Y $wp)), @($W, (& $Y $proj))) '#6A9BCC' 1.5 @(2, 2)
+        $perDay = $limit * (100 - $wp) / 100 / [math]::Max(1 / 24, $leftH / 24)
+        $el.pText.Text = (T 'paceOk') -f ($wp - 100 * ($nowU - $start).TotalHours / 168), (Fmt $perDay), $end.ToLocalTime().ToString('ddd HH:mm')
+        $el.pText.Foreground = Brush '#8FB573'
+    }
+    Add-Label $c $start.ToLocalTime().ToString('ddd d. MMM') 0 ($top + $H + 2)
+    Add-Label $c $end.ToLocalTime().ToString('ddd d. MMM') $W ($top + $H + 2) 'right'
+    Add-Label $c '100%' $W ((& $Y 100) - 15) 'right'
+}
 function Draw-Credit($c, $u) {
     $limit = [double]$cfg.creditLimit; $spent = $c.spent; $left = [math]::Max(0.0, $limit - $spent); $frac = $spent / $limit
     $color = if ($c.tooHigh) { '#E0B050' } elseif ($frac -ge 1) { '#E5484D' } elseif ($frac -ge 0.75) { '#E0B050' } else { '#8FB573' }
@@ -635,8 +753,8 @@ function Refresh {
     $u = Get-Usage $all; $script:last = $u
     # Percentages are not capped: above 100 % you are either on extra credits, or the real limit is higher
     # than the one set here. The bar is then full and red, and "x over the limit" is shown instead of "0 left".
-    $sp = 100 * $u.session / [double]$cfg.sessionLimit
-    $wp = 100 * $u.week / [double]$cfg.weeklyLimit
+    $sp = 100 * $u.session / [double]$cfg.sessionLimit; if ($null -ne $u.sPct -and ($u.sPct -lt 99.5 -or $sp -lt $u.sPct)) { $sp = $u.sPct }
+    $wp = 100 * $u.week / [double]$cfg.weeklyLimit; if ($null -ne $u.wPct -and ($u.wPct -lt 99.5 -or $wp -lt $u.wPct)) { $wp = $u.wPct }
     $el.title.Text = T 'title'
     $el.tabNow.Text = T 'tabNow'; $el.tabHist.Text = T 'tabHist'
     $resetTxt = if ($u.reset) { $m = [int]($u.reset - (Get-Date).ToUniversalTime()).TotalMinutes; (T 'resets') -f [math]::Floor($m/60), ($m % 60) } else { '' }
@@ -645,7 +763,8 @@ function Refresh {
     if ($u.weekReset) { $el.wSub.Text += (T 'weekResets') -f $u.weekReset.ToLocalTime().ToString('ddd d. MMM HH:mm') }
     Set-Meter $el.sLabel $el.sBar $el.sSub ((T 'session') -f $sp) $sp '#D97757'
     Set-Meter $el.wLabel $el.wBar $el.wSub ((T $(if ($u.weekReset) { 'weekFixed' } else { 'week' })) -f $wp) $wp '#6A9BCC'
-    $uncalibrated = [int64]$cfg.sessionLimit -eq 1000000 -and [int64]$cfg.weeklyLimit -eq 15000000
+    $uncalibrated = -not $u.liveAt -and [int64]$cfg.sessionLimit -eq 1000000
+    Draw-Pace $all $u $wp
     if ([double]$cfg.creditLimit -gt 0) {
         Draw-Credit (Get-Credit $all) $u
         $el.overHint.Text = T 'calHint'; $show = $uncalibrated
@@ -655,6 +774,7 @@ function Refresh {
     }
     $el.overHint.Visibility = $(if ($show) { 'Visible' } else { 'Collapsed' })
     $el.upd.Text = (T 'updated') -f (Get-Date -Format t)
+    if ($u.liveAt) { $el.upd.Text += ' · ' + ((T 'liveAt') -f $u.liveAt.ToLocalTime().ToString('HH:mm')) }
     if ($cfg.tab -eq 'history') { Draw-History }
 }
 
