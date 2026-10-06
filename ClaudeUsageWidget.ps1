@@ -332,54 +332,54 @@ function ModelName($m) {
 <Window xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         WindowStyle="None" AllowsTransparency="True" Background="Transparent"
         ShowInTaskbar="False" SizeToContent="WidthAndHeight" ResizeMode="NoResize">
-  <Border Name="root" CornerRadius="10" Background="#E61E1E1E" Padding="14,10" Width="250">
+  <Border Name="root" CornerRadius="10" Background="#E61E1E1E" Padding="16,12" Width="300">
     <StackPanel>
       <DockPanel Margin="0,0,0,6">
         <StackPanel Orientation="Horizontal" DockPanel.Dock="Right" VerticalAlignment="Center">
-          <TextBlock Name="tabNow" FontSize="11" Cursor="Hand"/>
-          <TextBlock Name="tabHist" FontSize="11" Cursor="Hand" Margin="8,0,0,0"/>
+          <TextBlock Name="tabNow" FontSize="13" Cursor="Hand"/>
+          <TextBlock Name="tabHist" FontSize="13" Cursor="Hand" Margin="8,0,0,0"/>
         </StackPanel>
-        <TextBlock Name="title" Foreground="#D97757" FontWeight="SemiBold" FontSize="13"/>
+        <TextBlock Name="title" Foreground="#D97757" FontWeight="SemiBold" FontSize="16"/>
       </DockPanel>
       <StackPanel Name="nowPanel">
-        <TextBlock Name="sLabel" Foreground="#EEE" FontSize="12"/>
-        <ProgressBar Name="sBar" Height="6" Maximum="100" Margin="0,3,0,2" Background="#333" BorderThickness="0" Foreground="#D97757"/>
-        <TextBlock Name="sSub" Foreground="#999" FontSize="11" Margin="0,0,0,8" TextWrapping="Wrap"/>
-        <TextBlock Name="wLabel" Foreground="#EEE" FontSize="12"/>
-        <ProgressBar Name="wBar" Height="6" Maximum="100" Margin="0,3,0,2" Background="#333" BorderThickness="0" Foreground="#6A9BCC"/>
-        <TextBlock Name="wSub" Foreground="#999" FontSize="11" TextWrapping="Wrap"/>
+        <TextBlock Name="sLabel" Foreground="#EEE" FontSize="14"/>
+        <ProgressBar Name="sBar" Height="8" Maximum="100" Margin="0,3,0,2" Background="#333" BorderThickness="0" Foreground="#D97757"/>
+        <TextBlock Name="sSub" Foreground="#999" FontSize="13" Margin="0,0,0,8" TextWrapping="Wrap"/>
+        <TextBlock Name="wLabel" Foreground="#EEE" FontSize="14"/>
+        <ProgressBar Name="wBar" Height="8" Maximum="100" Margin="0,3,0,2" Background="#333" BorderThickness="0" Foreground="#6A9BCC"/>
+        <TextBlock Name="wSub" Foreground="#999" FontSize="13" TextWrapping="Wrap"/>
         <Border Name="cBox" Margin="0,10,0,0" Padding="0,8,0,0" BorderBrush="#3A3A3A" BorderThickness="0,1,0,0" Visibility="Collapsed">
           <StackPanel>
-            <TextBlock Name="cLabel" Foreground="#EEE" FontSize="12"/>
+            <TextBlock Name="cLabel" Foreground="#EEE" FontSize="14"/>
             <!-- Solid part: used so far. Faint part: forecast for the whole period. -->
-            <Grid Name="cTrack" Width="222" Height="8" Margin="0,3,0,2" Background="#333" HorizontalAlignment="Left">
+            <Grid Name="cTrack" Width="268" Height="9" Margin="0,3,0,2" Background="#333" HorizontalAlignment="Left">
               <Rectangle Name="cFore" HorizontalAlignment="Left" RadiusX="2" RadiusY="2"/>
               <Rectangle Name="cUsed" HorizontalAlignment="Left" RadiusX="2" RadiusY="2"/>
             </Grid>
-            <TextBlock Name="cSub" Foreground="#999" FontSize="11" TextWrapping="Wrap"/>
-            <TextBlock Name="cFc" Foreground="#999" FontSize="11" TextWrapping="Wrap"/>
-            <TextBlock Name="cStatus" FontSize="11" TextWrapping="Wrap" Margin="0,4,0,0"/>
+            <TextBlock Name="cSub" Foreground="#999" FontSize="13" TextWrapping="Wrap"/>
+            <TextBlock Name="cFc" Foreground="#999" FontSize="13" TextWrapping="Wrap"/>
+            <TextBlock Name="cStatus" FontSize="13" TextWrapping="Wrap" Margin="0,4,0,0"/>
           </StackPanel>
         </Border>
-        <TextBlock Name="overHint" Foreground="#E0B050" FontSize="11" TextWrapping="Wrap" Margin="0,8,0,0" Visibility="Collapsed"/>
+        <TextBlock Name="overHint" Foreground="#E0B050" FontSize="13" TextWrapping="Wrap" Margin="0,8,0,0" Visibility="Collapsed"/>
       </StackPanel>
       <StackPanel Name="histPanel" Visibility="Collapsed">
         <DockPanel>
           <StackPanel Name="rangePanel" Orientation="Horizontal" DockPanel.Dock="Right"/>
-          <TextBlock Name="hDaily" Foreground="#EEE" FontSize="12"/>
+          <TextBlock Name="hDaily" Foreground="#EEE" FontSize="14"/>
         </DockPanel>
         <Canvas Name="cDaily" Margin="0,4,0,0" ClipToBounds="False"/>
-        <TextBlock Name="hTotal" Foreground="#999" FontSize="11" Margin="0,2,0,8"/>
-        <TextBlock Name="hToday" Foreground="#EEE" FontSize="12"/>
+        <TextBlock Name="hTotal" Foreground="#999" FontSize="13" Margin="0,2,0,8"/>
+        <TextBlock Name="hToday" Foreground="#EEE" FontSize="14"/>
         <Canvas Name="cToday" Margin="0,4,0,0"/>
-        <TextBlock Name="hTodayTotal" Foreground="#999" FontSize="11" Margin="0,2,0,8"/>
-        <TextBlock Name="hModels" Foreground="#EEE" FontSize="12"/>
+        <TextBlock Name="hTodayTotal" Foreground="#999" FontSize="13" Margin="0,2,0,8"/>
+        <TextBlock Name="hModels" Foreground="#EEE" FontSize="14"/>
         <StackPanel Name="pModels" Margin="0,2,0,8"/>
-        <TextBlock Name="hProjects" Foreground="#EEE" FontSize="12"/>
+        <TextBlock Name="hProjects" Foreground="#EEE" FontSize="14"/>
         <StackPanel Name="pProjects" Margin="0,2,0,4"/>
-        <TextBlock Name="hSince" Foreground="#666" FontSize="10"/>
+        <TextBlock Name="hSince" Foreground="#666" FontSize="12"/>
       </StackPanel>
-      <TextBlock Name="upd" Foreground="#666" FontSize="10" Margin="0,6,0,0"/>
+      <TextBlock Name="upd" Foreground="#666" FontSize="12" Margin="0,6,0,0"/>
     </StackPanel>
   </Border>
 </Window>
@@ -407,7 +407,7 @@ function Add-Bar($canvas, $x, $w, $h, $areaH, $color, $tip, $y0 = 0) {
 }
 function Add-Label($canvas, $text, $x, $y, $align = 'left') {
     $tb = New-Object Windows.Controls.TextBlock
-    $tb.Text = $text; $tb.FontSize = 9; $tb.Foreground = Brush '#777'
+    $tb.Text = $text; $tb.FontSize = 11; $tb.Foreground = Brush '#777'
     $tb.Measure((New-Object Windows.Size ([double]::PositiveInfinity), ([double]::PositiveInfinity)))
     $w = $tb.DesiredSize.Width
     if ($align -eq 'right') { $x -= $w } elseif ($align -eq 'center') { $x -= $w / 2 }
@@ -418,21 +418,21 @@ function Add-Label($canvas, $text, $x, $y, $align = 'left') {
 function Add-ShareRow($panel, $label, $value, $share, $color, $width) {
     $row = New-Object Windows.Controls.DockPanel; $row.Margin = New-Object Windows.Thickness 0, 2, 0, 0
     $name = New-Object Windows.Controls.TextBlock
-    $name.Text = $label; $name.Width = 110; $name.FontSize = 11; $name.Foreground = Brush '#CCC'; $name.TextTrimming = 'CharacterEllipsis'; $name.ToolTip = $label
+    $name.Text = $label; $name.Width = 135; $name.FontSize = 13; $name.Foreground = Brush '#CCC'; $name.TextTrimming = 'CharacterEllipsis'; $name.ToolTip = $label
     $val = New-Object Windows.Controls.TextBlock
-    $val.Text = '{0} ({1:0}%)' -f (Fmt $value), ($share * 100); $val.Width = 78; $val.FontSize = 11; $val.Foreground = Brush '#999'; $val.TextAlignment = 'Right'
+    $val.Text = '{0} ({1:0}%)' -f (Fmt $value), ($share * 100); $val.Width = 98; $val.FontSize = 13; $val.Foreground = Brush '#999'; $val.TextAlignment = 'Right'
     [Windows.Controls.DockPanel]::SetDock($name, 'Left'); [Windows.Controls.DockPanel]::SetDock($val, 'Right')
     $bar = New-Object Windows.Shapes.Rectangle
     $bar.Height = 6; $bar.RadiusX = 2; $bar.RadiusY = 2; $bar.Fill = Brush $color
-    $bar.Width = [math]::Max(2, ($width - 196) * $share); $bar.HorizontalAlignment = 'Left'; $bar.VerticalAlignment = 'Center'
+    $bar.Width = [math]::Max(2, ($width - 245) * $share); $bar.HorizontalAlignment = 'Left'; $bar.VerticalAlignment = 'Center'
     [void]$row.Children.Add($name); [void]$row.Children.Add($val); [void]$row.Children.Add($bar)
     [void]$panel.Children.Add($row)
 }
 
-$histWidth = 320; $chartW = $histWidth - 28
+$histWidth = 390; $chartW = $histWidth - 32
 $rangeButtons = foreach ($days in 7, 30, 90) {
     $b = New-Object Windows.Controls.TextBlock
-    $b.Text = "${days}d"; $b.Tag = $days; $b.FontSize = 11; $b.Cursor = 'Hand'; $b.Margin = New-Object Windows.Thickness 6, 0, 0, 0
+    $b.Text = "${days}d"; $b.Tag = $days; $b.FontSize = 13; $b.Cursor = 'Hand'; $b.Margin = New-Object Windows.Thickness 6, 0, 0, 0
     $b.Add_MouseLeftButtonDown({ param($s, $e) $cfg.historyRange = [int]$s.Tag; Save-Config; Draw-History; $e.Handled = $true })
     [void]$el.rangePanel.Children.Add($b); $b
 }
@@ -447,7 +447,7 @@ function Draw-History {
     $keys = for ($j = $N - 1; $j -ge 0; $j--) { $today.AddDays(-$j).ToString('yyyy-MM-dd', $inv) }
     $vals = foreach ($k in $keys) { if ($script:history[$k]) { [int64]$script:history[$k].total } else { [int64]0 } }
     $max = ($vals | Measure-Object -Maximum).Maximum
-    $c = $el.cDaily; $c.Children.Clear(); $c.Width = $chartW; $dayH = 56; $padTop = 13; $c.Height = $padTop + $dayH + 14
+    $c = $el.cDaily; $c.Children.Clear(); $c.Width = $chartW; $dayH = 64; $padTop = 16; $c.Height = $padTop + $dayH + 17
     $bw = $chartW / $N; $gap = [math]::Max(1, $bw * 0.2)
     for ($j = 0; $j -lt $N; $j++) {
         $date = [datetime]::ParseExact($keys[$j], 'yyyy-MM-dd', $inv)
@@ -468,7 +468,7 @@ function Draw-History {
     $td = $script:history[$today.ToString('yyyy-MM-dd', $inv)]
     $hours = if ($td) { $td.hours } else { [int64[]]::new(24) }
     $hmax = ($hours | Measure-Object -Maximum).Maximum
-    $c = $el.cToday; $c.Children.Clear(); $c.Width = $chartW; $H2 = 32; $padTop = 13; $c.Height = $padTop + $H2 + 13
+    $c = $el.cToday; $c.Children.Clear(); $c.Width = $chartW; $H2 = 38; $padTop = 16; $c.Height = $padTop + $H2 + 16
     $hw = $chartW / 24; $now = (Get-Date).Hour
     for ($j = 0; $j -lt 24; $j++) {
         $h = if ($hmax -gt 0) { $H2 * $hours[$j] / $hmax } else { 0 }; if ($hours[$j] -gt 0 -and $h -lt 2) { $h = 2 }
@@ -508,7 +508,7 @@ function Show-Tab($tab) {
     $hist = $tab -eq 'history'
     $el.nowPanel.Visibility = $(if ($hist) { 'Collapsed' } else { 'Visible' })
     $el.histPanel.Visibility = $(if ($hist) { 'Visible' } else { 'Collapsed' })
-    $el.root.Width = $(if ($hist) { $histWidth } else { 250 })
+    $el.root.Width = $(if ($hist) { $histWidth } else { 300 })
     $el.tabNow.Foreground = Brush $(if ($hist) { '#777' } else { '#EEE' })
     $el.tabHist.Foreground = Brush $(if ($hist) { '#EEE' } else { '#777' })
     if ($hist) { Draw-History }
