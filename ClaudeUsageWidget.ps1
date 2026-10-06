@@ -445,7 +445,7 @@ function ModelName($m) {
 <Window xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         WindowStyle="None" AllowsTransparency="True" Background="Transparent"
         ShowInTaskbar="False" SizeToContent="WidthAndHeight" ResizeMode="NoResize">
-  <Border Name="root" CornerRadius="10" Background="#E61E1E1E" Padding="16,12" Width="300">
+  <Border Name="root" CornerRadius="10" Background="#1E1E1E" BorderBrush="#3A3A3A" BorderThickness="1" Padding="16,12" Width="300">
     <StackPanel>
       <DockPanel Margin="0,0,0,6">
         <StackPanel Orientation="Horizontal" DockPanel.Dock="Right" VerticalAlignment="Center">
