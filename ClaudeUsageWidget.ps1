@@ -1,5 +1,5 @@
 ﻿# Claude usage desktop widget - reads local Claude Code logs (~/.claude/projects/*.jsonl)
-Add-Type -AssemblyName PresentationFramework, PresentationCore, WindowsBase, Microsoft.VisualBasic
+Add-Type -AssemblyName PresentationFramework, PresentationCore, WindowsBase, Microsoft.VisualBasic, System.Windows.Forms, System.Drawing
 
 $dir      = Split-Path -Parent $MyInvocation.MyCommand.Path
 $cfgPath  = Join-Path $dir 'config.json'
@@ -417,6 +417,22 @@ Set-MenuText
 $win.ContextMenu = $menu
 
 $win.Add_MouseLeftButtonDown({ $win.DragMove(); $cfg.left = $win.Left; $cfg.top = $win.Top; Save-Config })
+
+# The History tab is larger than Now. Place the window at the position the user chose
+# (cfg.left/top), shifted only as far as needed to stay inside that monitor's work area.
+# The shifted position is not saved, so switching back to Now returns to the chosen spot.
+function Keep-OnScreen {
+    $src = [Windows.PresentationSource]::FromVisual($win)
+    $sx = 1.0; $sy = 1.0
+    if ($src) { $m = $src.CompositionTarget.TransformToDevice; $sx = $m.M11; $sy = $m.M22 }
+    $pt = New-Object Drawing.Point ([int]($cfg.left * $sx)), ([int]($cfg.top * $sy))
+    $wa = [Windows.Forms.Screen]::FromPoint($pt).WorkingArea
+    $left = [math]::Max($wa.Left / $sx, [math]::Min([double]$cfg.left, $wa.Right / $sx - $win.ActualWidth))
+    $top  = [math]::Max($wa.Top / $sy,  [math]::Min([double]$cfg.top,  $wa.Bottom / $sy - $win.ActualHeight))
+    if ($win.Left -ne $left) { $win.Left = $left }
+    if ($win.Top -ne $top) { $win.Top = $top }
+}
+$win.Add_SizeChanged({ Keep-OnScreen })
 $timer = New-Object Windows.Threading.DispatcherTimer
 $timer.Interval = [TimeSpan]::FromSeconds(60); $timer.Add_Tick({ Refresh }); $timer.Start()
 Refresh
