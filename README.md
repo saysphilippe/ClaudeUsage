@@ -7,6 +7,8 @@ A small always-on-top Windows desktop widget that shows how much of your Claude 
 
 It reads the local Claude Code logs in `%USERPROFILE%\.claude\projects`. Nothing is sent anywhere, and no API key or login is needed.
 
+**Your own account only:** the widget never signs in to Claude and contains no credentials. It only reads the logs Claude Code writes on *your* PC, so it always shows the usage of whoever is signed in to Claude Code on that Windows user account – never the author's or anyone else's.
+
 The widget can show its text in **English** or **Norwegian (Norsk)**. You choose the language during installation and can change it later from the right-click menu.
 
 ## Requirements
@@ -86,7 +88,7 @@ This stops the widget and removes its files, shortcuts and settings.
 
 ## Norsk
 
-Claude Usage er en liten widget for Windows-skrivebordet som viser hvor mye av Claude Code-kvoten din du har brukt: den nåværende 5-timers økten og de siste 7 dagene. Den leser bare de lokale loggfilene til Claude Code og sender ingenting noe sted.
+Claude Usage er en liten widget for Windows-skrivebordet som viser hvor mye av Claude Code-kvoten din du har brukt: den nåværende 5-timers økten og de siste 7 dagene. Den leser bare de lokale loggfilene til Claude Code og sender ingenting noe sted. Widgeten logger aldri inn på Claude og inneholder ingen påloggingsdata, så den viser alltid forbruket til den som er logget inn i Claude Code på din egen PC – aldri utviklerens eller andres.
 
 **Installering:** Kjør `irm https://raw.githubusercontent.com/saysphilippe/ClaudeUsage/main/install.ps1 | iex` i PowerShell (fungerer bare når repoet er offentlig). Du kan også laste ned repoet og kjøre `powershell -NoProfile -ExecutionPolicy Bypass -File .\install.ps1` i mappen. Velg **2) Norsk** når installasjonsprogrammet spør om språk.
 
