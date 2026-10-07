@@ -8,7 +8,7 @@ $logRoot  = Join-Path $env:USERPROFILE '.claude\projects'
 $inv      = [Globalization.CultureInfo]::InvariantCulture
 
 $cfg = [ordered]@{ sessionLimit = 1000000; weeklyLimit = 15000000; topmost = $true; left = 100; top = 100; language = 'en'; tab = 'now'; historyRange = 30
-                   creditLimit = 0; creditResetDay = 1; creditBase = $null; creditBaseAt = $null; fx = $null; fxDate = ''; weeklyReset = $null }
+                   creditLimit = 0; creditResetDay = 1; creditBase = $null; creditBaseAt = $null; fx = $null; fxDate = ''; weeklyReset = $null; expanded = $false }
 if (Test-Path $cfgPath) {
     try { (Get-Content $cfgPath -Raw | ConvertFrom-Json).psobject.Properties | ForEach-Object { $cfg[$_.Name] = $_.Value } } catch {}
 }
@@ -49,6 +49,7 @@ $strings = @{
         askCreditLimit = 'Your monthly limit for extra credits in USD (0 hides the section):'
         askCreditSpent = 'Credits used this period in USD, as shown on claude.ai (Settings → Usage):'
         askCreditDay = 'Day of the month the credits reset (1–28):'
+        more = '▸ Show more'; less = '▾ Show less'
     }
     no = @{
         title = 'Claude-forbruk'; session = '5-timers økt: {0:0}%'; resets = ' · nullstilles om {0}t {1:00}m'
@@ -84,6 +85,7 @@ $strings = @{
         askCreditLimit = 'Månedlig grense for ekstra kreditter i USD (0 skjuler seksjonen):'
         askCreditSpent = 'Kreditter brukt i denne perioden i USD, slik claude.ai viser (Innstillinger → Bruk):'
         askCreditDay = 'Dag i måneden kredittene nullstilles (1–28):'
+        more = '▸ Vis mer'; less = '▾ Vis mindre'
     }
     sv = @{
         title = 'Claude-användning'; session = '5-timmarssession: {0:0}%'; resets = ' · nollställs om {0}h {1:00}m'
@@ -119,6 +121,7 @@ $strings = @{
         askCreditLimit = 'Månadsgräns för extra krediter i USD (0 döljer avsnittet):'
         askCreditSpent = 'Krediter använda under perioden i USD, som claude.ai visar (Inställningar → Användning):'
         askCreditDay = 'Dag i månaden krediterna nollställs (1–28):'
+        more = '▸ Visa mer'; less = '▾ Visa mindre'
     }
     da = @{
         title = 'Claude-forbrug'; session = '5-timers session: {0:0}%'; resets = ' · nulstilles om {0}t {1:00}m'
@@ -154,6 +157,7 @@ $strings = @{
         askCreditLimit = 'Månedlig grænse for ekstra kreditter i USD (0 skjuler afsnittet):'
         askCreditSpent = 'Kreditter brugt i perioden i USD, som claude.ai viser (Indstillinger → Forbrug):'
         askCreditDay = 'Dag i måneden kreditterne nulstilles (1–28):'
+        more = '▸ Vis mere'; less = '▾ Vis mindre'
     }
 }
 $langNames = [ordered]@{ en = 'English'; no = 'Norsk'; sv = 'Svenska'; da = 'Dansk' }
@@ -481,6 +485,9 @@ function ModelName($m) {
           <Canvas Name="cPace" Margin="0,4,0,0" Background="Transparent"/>
           <TextBlock Name="pText" FontSize="13" TextWrapping="Wrap"/>
         </StackPanel>
+        <!-- Accordion: everything below is hidden until "Show more" is clicked -->
+        <TextBlock Name="moreBtn" Foreground="#999" FontSize="13" Cursor="Hand" Margin="0,8,0,0" Background="Transparent" HorizontalAlignment="Left" Visibility="Collapsed"/>
+        <StackPanel Name="moreBox" Visibility="Collapsed">
         <Border Name="cBox" Margin="0,10,0,0" Padding="0,8,0,0" BorderBrush="#3A3A3A" BorderThickness="0,1,0,0" Visibility="Collapsed">
           <StackPanel>
             <TextBlock Name="cLabel" Foreground="#EEE" FontSize="14"/>
@@ -495,6 +502,7 @@ function ModelName($m) {
           </StackPanel>
         </Border>
         <TextBlock Name="overHint" Foreground="#E0B050" FontSize="13" TextWrapping="Wrap" Margin="0,8,0,0" Visibility="Collapsed"/>
+        </StackPanel>
       </StackPanel>
       <StackPanel Name="histPanel" Visibility="Collapsed">
         <DockPanel>
@@ -519,7 +527,7 @@ function ModelName($m) {
 '@
 $win = [Windows.Markup.XamlReader]::Load((New-Object System.Xml.XmlNodeReader $xaml))
 $el = @{}
-'root','title','tabNow','tabHist','nowPanel','histPanel','sLabel','sBar','sSub','wLabel','wBar','wSub','overHint','upd','paceBox','pTitle','cPace','pText','cBox','cLabel','cTrack','cFore','cUsed','cSub','cFc','cStatus',
+'root','title','tabNow','tabHist','nowPanel','histPanel','sLabel','sBar','sSub','wLabel','wBar','wSub','overHint','upd','paceBox','pTitle','cPace','pText','cBox','cLabel','cTrack','cFore','cUsed','cSub','cFc','cStatus','moreBtn','moreBox',
 'rangePanel','hDaily','cDaily','hTotal','hToday','cToday','hTodayTotal','hModels','pModels','hProjects','pProjects','hSince' | ForEach-Object { $el[$_] = $win.FindName($_) }
 $win.Left = $cfg.left; $win.Top = $cfg.top; $win.Topmost = [bool]$cfg.topmost
 $script:last = $null
@@ -648,6 +656,15 @@ function Show-Tab($tab) {
     if ($cfg.tab -ne $tab) { $cfg.tab = $tab; Save-Config }
 }
 $el.tabNow.Add_MouseLeftButtonDown({ param($s, $e) Show-Tab 'now'; $e.Handled = $true })
+function Show-More {
+    # The button only appears when there is something to unfold
+    $has = $el.cBox.Visibility -eq 'Visible' -or $el.overHint.Visibility -eq 'Visible'
+    $open = [bool]$cfg.expanded
+    $el.moreBtn.Visibility = $(if ($has) { 'Visible' } else { 'Collapsed' })
+    $el.moreBox.Visibility = $(if ($has -and $open) { 'Visible' } else { 'Collapsed' })
+    $el.moreBtn.Text = T $(if ($open) { 'less' } else { 'more' })
+}
+$el.moreBtn.Add_MouseLeftButtonDown({ param($s, $e) $cfg.expanded = -not [bool]$cfg.expanded; Save-Config; Show-More; $e.Handled = $true })
 $el.tabHist.Add_MouseLeftButtonDown({ param($s, $e) Show-Tab 'history'; $e.Handled = $true })
 
 function Get-UsedText($used, $limit) {
@@ -793,6 +810,7 @@ function Refresh {
         $el.overHint.Text = T 'overHint'; $show = $sp -gt 100 -or $wp -gt 100
     }
     $el.overHint.Visibility = $(if ($show) { 'Visible' } else { 'Collapsed' })
+    Show-More
     $el.upd.Text = (T 'updated') -f (Get-Date -Format t)
     if ($u.liveAt) { $el.upd.Text += ' · ' + ((T 'liveAt') -f $u.liveAt.ToLocalTime().ToString('HH:mm')) }
     if ($cfg.tab -eq 'history') { Draw-History }
