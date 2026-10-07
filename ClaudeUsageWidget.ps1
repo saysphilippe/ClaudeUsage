@@ -8,7 +8,7 @@ $logRoot  = Join-Path $env:USERPROFILE '.claude\projects'
 $inv      = [Globalization.CultureInfo]::InvariantCulture
 
 $cfg = [ordered]@{ sessionLimit = 1000000; weeklyLimit = 15000000; topmost = $true; left = 100; top = 100; language = 'en'; tab = 'now'; historyRange = 30
-                   creditLimit = 0; creditResetDay = 1; creditBase = $null; creditBaseAt = $null; fx = $null; fxDate = ''; weeklyReset = $null; expanded = $false }
+                   creditLimit = 0; creditResetDay = 1; creditBase = $null; creditBaseAt = $null; fx = $null; fxDate = ''; weeklyReset = $null; expanded = $false; minimized = $false }
 if (Test-Path $cfgPath) {
     try { (Get-Content $cfgPath -Raw | ConvertFrom-Json).psobject.Properties | ForEach-Object { $cfg[$_.Name] = $_.Value } } catch {}
 }
@@ -49,6 +49,7 @@ $strings = @{
         askCreditLimit = 'Your monthly limit for extra credits in USD (0 hides the section):'
         askCreditSpent = 'Credits used this period in USD, as shown on claude.ai (Settings → Usage):'
         askCreditDay = 'Day of the month the credits reset (1–28):'
+        minimize = 'Minimize'; restore = 'Session usage · click to open'
         more = '▸ Show more'; less = '▾ Show less'
     }
     no = @{
@@ -85,6 +86,7 @@ $strings = @{
         askCreditLimit = 'Månedlig grense for ekstra kreditter i USD (0 skjuler seksjonen):'
         askCreditSpent = 'Kreditter brukt i denne perioden i USD, slik claude.ai viser (Innstillinger → Bruk):'
         askCreditDay = 'Dag i måneden kredittene nullstilles (1–28):'
+        minimize = 'Minimer'; restore = 'Bruk i 5-timers økten · klikk for å åpne'
         more = '▸ Vis mer'; less = '▾ Vis mindre'
     }
     sv = @{
@@ -121,6 +123,7 @@ $strings = @{
         askCreditLimit = 'Månadsgräns för extra krediter i USD (0 döljer avsnittet):'
         askCreditSpent = 'Krediter använda under perioden i USD, som claude.ai visar (Inställningar → Användning):'
         askCreditDay = 'Dag i månaden krediterna nollställs (1–28):'
+        minimize = 'Minimera'; restore = 'Användning i 5-timmarssessionen · klicka för att öppna'
         more = '▸ Visa mer'; less = '▾ Visa mindre'
     }
     da = @{
@@ -157,6 +160,7 @@ $strings = @{
         askCreditLimit = 'Månedlig grænse for ekstra kreditter i USD (0 skjuler afsnittet):'
         askCreditSpent = 'Kreditter brugt i perioden i USD, som claude.ai viser (Indstillinger → Forbrug):'
         askCreditDay = 'Dag i måneden kreditterne nulstilles (1–28):'
+        minimize = 'Minimér'; restore = 'Forbrug i 5-timerssessionen · klik for at åbne'
         more = '▸ Vis mere'; less = '▾ Vis mindre'
     }
 }
@@ -464,12 +468,18 @@ function ModelName($m) {
 <Window xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         WindowStyle="None" AllowsTransparency="True" Background="Transparent"
         ShowInTaskbar="False" SizeToContent="WidthAndHeight" ResizeMode="NoResize">
+  <Grid>
+  <!-- Minimized: only the 5-hour session %, in the bottom-right corner of the screen -->
+  <Border Name="mini" CornerRadius="8" Background="#1E1E1E" BorderBrush="#3A3A3A" BorderThickness="1" Padding="10,4" Cursor="Hand" Visibility="Collapsed">
+    <TextBlock Name="miniText" FontSize="16" FontWeight="SemiBold"/>
+  </Border>
   <Border Name="root" CornerRadius="10" Background="#1E1E1E" BorderBrush="#3A3A3A" BorderThickness="1" Padding="16,12" Width="300">
     <StackPanel>
       <DockPanel Margin="0,0,0,6">
         <StackPanel Orientation="Horizontal" DockPanel.Dock="Right" VerticalAlignment="Center">
           <TextBlock Name="tabNow" FontSize="13" Cursor="Hand"/>
           <TextBlock Name="tabHist" FontSize="13" Cursor="Hand" Margin="8,0,0,0"/>
+          <TextBlock Name="minBtn" Text="–" Foreground="#777" FontSize="15" Cursor="Hand" Margin="12,-2,0,0" Background="Transparent"/>
         </StackPanel>
         <TextBlock Name="title" Foreground="#D97757" FontWeight="SemiBold" FontSize="16"/>
       </DockPanel>
@@ -523,11 +533,12 @@ function ModelName($m) {
       <TextBlock Name="upd" Foreground="#666" FontSize="12" Margin="0,6,0,0" TextWrapping="Wrap"/>
     </StackPanel>
   </Border>
+  </Grid>
 </Window>
 '@
 $win = [Windows.Markup.XamlReader]::Load((New-Object System.Xml.XmlNodeReader $xaml))
 $el = @{}
-'root','title','tabNow','tabHist','nowPanel','histPanel','sLabel','sBar','sSub','wLabel','wBar','wSub','overHint','upd','paceBox','pTitle','cPace','pText','cBox','cLabel','cTrack','cFore','cUsed','cSub','cFc','cStatus','moreBtn','moreBox',
+'root','title','tabNow','tabHist','nowPanel','histPanel','sLabel','sBar','sSub','wLabel','wBar','wSub','overHint','upd','paceBox','pTitle','cPace','pText','cBox','cLabel','cTrack','cFore','cUsed','cSub','cFc','cStatus','moreBtn','moreBox','minBtn','mini','miniText',
 'rangePanel','hDaily','cDaily','hTotal','hToday','cToday','hTodayTotal','hModels','pModels','hProjects','pProjects','hSince' | ForEach-Object { $el[$_] = $win.FindName($_) }
 $win.Left = $cfg.left; $win.Top = $cfg.top; $win.Topmost = [bool]$cfg.topmost
 $script:last = $null
@@ -799,6 +810,7 @@ function Refresh {
     $el.wSub.Text = Get-UsedText $u.week $cfg.weeklyLimit
     if ($u.weekReset) { $el.wSub.Text += (T 'weekResets') -f $u.weekReset.ToLocalTime().ToString('ddd d. MMM HH:mm') }
     Set-Meter $el.sLabel $el.sBar $el.sSub ((T 'session') -f $sp) $sp '#D97757'
+    $el.miniText.Text = '{0:0}%' -f $sp; $el.miniText.Foreground = Brush $(if ($sp -gt 100) { '#E5484D' } else { '#D97757' })
     Set-Meter $el.wLabel $el.wBar $el.wSub ((T $(if ($u.weekReset) { 'weekFixed' } else { 'week' })) -f $wp) $wp '#6A9BCC'
     $uncalibrated = -not $u.liveAt -and [int64]$cfg.sessionLimit -eq 1000000
     Draw-Pace $all $u $wp
@@ -870,6 +882,7 @@ AddItem 'mClose' { $win.Close() } | Out-Null
 function Set-MenuText {
     foreach ($k in $menuItems.Keys) { $menuItems[$k].Header = T $k }
     foreach ($c in $langItems.Keys) { $langItems[$c].IsChecked = ($c -eq $cfg.language) }
+    $el.minBtn.ToolTip = T 'minimize'; $el.mini.ToolTip = T 'restore'
 }
 Set-MenuText
 $win.ContextMenu = $menu
@@ -880,6 +893,7 @@ $win.Add_MouseLeftButtonDown({ $win.DragMove(); $cfg.left = $win.Left; $cfg.top 
 # (cfg.left/top), shifted only as far as needed to stay inside that monitor's work area.
 # The shifted position is not saved, so switching back to Now returns to the chosen spot.
 function Keep-OnScreen {
+    if ($cfg.minimized) { Place-Mini; return }
     $src = [Windows.PresentationSource]::FromVisual($win)
     $sx = 1.0; $sy = 1.0
     if ($src) { $m = $src.CompositionTarget.TransformToDevice; $sx = $m.M11; $sy = $m.M22 }
@@ -891,8 +905,29 @@ function Keep-OnScreen {
     if ($win.Top -ne $top) { $win.Top = $top }
 }
 $win.Add_SizeChanged({ Keep-OnScreen })
+
+# Minimized, the widget is just the session % in the bottom-right corner of the monitor it was on.
+# Clicking it opens the full widget again at the position the user chose.
+function Place-Mini {
+    $src = [Windows.PresentationSource]::FromVisual($win)
+    $sx = 1.0; $sy = 1.0
+    if ($src) { $m = $src.CompositionTarget.TransformToDevice; $sx = $m.M11; $sy = $m.M22 }
+    $pt = New-Object Drawing.Point ([int]($cfg.left * $sx)), ([int]($cfg.top * $sy))
+    $wa = [Windows.Forms.Screen]::FromPoint($pt).WorkingArea
+    $win.Left = $wa.Right / $sx - $win.ActualWidth - 12
+    $win.Top = $wa.Bottom / $sy - $win.ActualHeight - 12
+}
+function Set-Minimized($on) {
+    $cfg.minimized = $on; Save-Config
+    $el.root.Visibility = $(if ($on) { 'Collapsed' } else { 'Visible' })
+    $el.mini.Visibility = $(if ($on) { 'Visible' } else { 'Collapsed' })
+    $win.UpdateLayout(); Keep-OnScreen
+}
+$el.minBtn.Add_MouseLeftButtonDown({ param($s, $e) Set-Minimized $true; $e.Handled = $true })
+$el.mini.Add_MouseLeftButtonDown({ param($s, $e) Set-Minimized $false; $e.Handled = $true })
 $timer = New-Object Windows.Threading.DispatcherTimer
 $timer.Interval = [TimeSpan]::FromSeconds(60); $timer.Add_Tick({ Refresh }); $timer.Start()
 Refresh
 Show-Tab $cfg.tab
+if ($cfg.minimized) { Set-Minimized $true }
 [void]$win.ShowDialog()
