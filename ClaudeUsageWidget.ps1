@@ -37,7 +37,7 @@ $strings = @{
         cForecast = 'Forecast for this period: {0}'; cSession = 'session'; cWeek = 'weekly limit'
         cTooHigh = 'Claude is still answering, so the estimate is too high. Enter the amount from claude.ai (right-click → Extra credits) and calibrate the limits from /usage.'
         weekFixed = 'Weekly limit: {0:0}%'; weekResets = ' · resets {0}'; mWeekReset = 'Set when the weekly limit resets…'
-        paceTitle = 'Pace this week'; liveAt = 'figures from Claude Code {0}'
+        paceTitle = 'Pace this week'
         paceAhead = 'Faster than an even pace (+{0:0}%). At this pace the weekly limit is reached {1}.'
         paceOk = 'Within an even pace ({0:+0;-0;0}%). You can use ~{1} per day until {2}.'
         paceFull = 'The weekly limit is reached. It resets {0}.'
@@ -73,7 +73,7 @@ $strings = @{
         cForecast = 'Prognose for perioden: {0}'; cSession = 'økten'; cWeek = 'ukegrensen'
         cTooHigh = 'Claude svarer fortsatt, så anslaget er for høyt. Registrer beløpet fra claude.ai (høyreklikk → Ekstra kreditter) og kalibrer grensene fra /usage.'
         weekFixed = 'Ukegrense: {0:0}%'; weekResets = ' · nullstilles {0}'; mWeekReset = 'Angi når ukegrensen nullstilles…'
-        paceTitle = 'Tempo denne uken'; liveAt = 'tall fra Claude Code {0}'
+        paceTitle = 'Tempo denne uken'
         paceAhead = 'Raskere enn jevnt tempo (+{0:0} %). Med dette tempoet er ukegrensen nådd {1}.'
         paceOk = 'Innenfor jevnt tempo ({0:+0;-0;0} %). Du kan bruke ~{1} per dag frem til {2}.'
         paceFull = 'Ukegrensen er nådd. Den nullstilles {0}.'
@@ -109,7 +109,7 @@ $strings = @{
         cForecast = 'Prognos för perioden: {0}'; cSession = 'sessionen'; cWeek = 'veckogränsen'
         cTooHigh = 'Claude svarar fortfarande, så uppskattningen är för hög. Ange beloppet från claude.ai (högerklicka → Extra krediter) och kalibrera gränserna från /usage.'
         weekFixed = 'Veckogräns: {0:0}%'; weekResets = ' · nollställs {0}'; mWeekReset = 'Ange när veckogränsen nollställs…'
-        paceTitle = 'Takt denna vecka'; liveAt = 'siffror från Claude Code {0}'
+        paceTitle = 'Takt denna vecka'
         paceAhead = 'Snabbare än jämn takt (+{0:0} %). I den här takten nås veckogränsen {1}.'
         paceOk = 'Inom jämn takt ({0:+0;-0;0} %). Du kan använda ~{1} per dag fram till {2}.'
         paceFull = 'Veckogränsen är nådd. Den nollställs {0}.'
@@ -145,7 +145,7 @@ $strings = @{
         cForecast = 'Prognose for perioden: {0}'; cSession = 'sessionen'; cWeek = 'ugegrænsen'
         cTooHigh = 'Claude svarer stadig, så overslaget er for højt. Angiv beløbet fra claude.ai (højreklik → Ekstra kreditter) og kalibrér grænserne fra /usage.'
         weekFixed = 'Ugegrænse: {0:0}%'; weekResets = ' · nulstilles {0}'; mWeekReset = 'Angiv hvornår ugegrænsen nulstilles…'
-        paceTitle = 'Tempo denne uge'; liveAt = 'tal fra Claude Code {0}'
+        paceTitle = 'Tempo denne uge'
         paceAhead = 'Hurtigere end jævnt tempo (+{0:0} %). I dette tempo nås ugegrænsen {1}.'
         paceOk = 'Inden for jævnt tempo ({0:+0;-0;0} %). Du kan bruge ~{1} pr. dag frem til {2}.'
         paceFull = 'Ugegrænsen er nået. Den nulstilles {0}.'
@@ -812,7 +812,6 @@ function Refresh {
     $el.overHint.Visibility = $(if ($show) { 'Visible' } else { 'Collapsed' })
     Show-More
     $el.upd.Text = (T 'updated') -f (Get-Date -Format t)
-    if ($u.liveAt) { $el.upd.Text += ' · ' + ((T 'liveAt') -f $u.liveAt.ToLocalTime().ToString('HH:mm')) }
     if ($cfg.tab -eq 'history') { Draw-History }
 }
 
