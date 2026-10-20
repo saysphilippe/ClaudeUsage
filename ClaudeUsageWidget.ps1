@@ -514,9 +514,17 @@ function Select-Items($all) {
 }
 # One line per account: its 5-hour and weekly usage and when each limit resets, from the last figures Claude Code reported
 # while that account was signed in. A window whose reset time has passed has started over, so it shows no figure.
+# Words for the account lines and the minimized view, per language: 5-hour, week, reset, frozen, log in
+$script:accWords = @{
+    en = @{ s = '5h'; w = 'week'; reset = 'reset'; frozen = 'frozen' }
+    no = @{ s = '5t'; w = 'uke'; reset = 'nullstilt'; frozen = 'fryst' }
+    sv = @{ s = '5h'; w = 'vecka'; reset = 'nollst' + [char]0xE4 + 'llt'; frozen = 'fryst' }
+    da = @{ s = '5t'; w = 'uge'; reset = 'nulstillet'; frozen = 'frosset' }
+}
+function Get-AccWords { $x = $script:accWords[[string]$cfg.language]; if ($x) { $x } else { $script:accWords.en } }
 function Get-AccountLines {
-    $no = $cfg.language -in 'no', 'da', 'sv'
-    $wS = $(if ($no) { '5t' } else { '5h' }); $wW = $(if ($no) { 'uke' } else { 'week' })
+    $aw = Get-AccWords
+    $wS = $aw.s; $wW = $aw.w
     $now = (Get-Date).ToUniversalTime()
     foreach ($n in @(Get-AccountNames)) {
         $parts = @()
@@ -526,7 +534,7 @@ function Get-AccountLines {
             $x = if ($l) { $l.($w[0]) }
             if (-not $x) { $parts += "$($w[1]) -"; continue }
             $r = [DateTimeOffset]::FromUnixTimeSeconds([int64]$x.resets_at).LocalDateTime
-            if ($r -le (Get-Date)) { $parts += "$($w[1]) 0% ($(if ($no) { 'nullstilt' } else { 'reset' }))"; continue }
+            if ($r -le (Get-Date)) { $parts += "$($w[1]) 0% ($($aw.reset))"; continue }
             $when = if ($r.Date -eq (Get-Date).Date) { $r.ToString('HH:mm') } else { $r.ToString('ddd d. HH:mm') }
             $parts += ('{0} {1:0}% {2} {3}' -f $w[1], [double]$x.pct, [char]0x2192, $when)
         }
@@ -574,7 +582,7 @@ function Draw-Profiles {
 # used up its 5 hours is frozen (red) until then. The shown account uses the widget's own figures, the others their last live figures.
 function Draw-Mini($sp, $u) {
     $names = @(Get-AccountNames)
-    $no = $cfg.language -in 'no', 'da', 'sv'
+    $aw = Get-AccWords
     $rows = @()
     if (-not $names.Count) {
         $rows += [pscustomobject]@{ n = ''; pct = $sp; mins = $(if ($u.reset) { ($u.reset - (Get-Date).ToUniversalTime()).TotalMinutes } else { $null }) }
@@ -594,7 +602,7 @@ function Draw-Mini($sp, $u) {
         $frozen = $r.pct -ge 99.5
         $txt = '{0:0}%' -f $r.pct
         if ($null -ne $r.mins) { $txt += ' ' + [char]0x00B7 + ' ' + (Duration $r.mins) }
-        if ($frozen) { $txt += ' ' + [char]0x00B7 + ' ' + $(if ($no) { 'fryst' } else { 'frozen' }) }
+        if ($frozen) { $txt += ' ' + [char]0x00B7 + ' ' + $($aw.frozen) }
         if ($r.n -and $rows.Count -gt 1) { $txt = (Short-Account $r.n) + '  ' + $txt }
         $tb = New-Object Windows.Controls.TextBlock
         $tb.Text = $txt; $tb.FontSize = $(if ($rows.Count -gt 1) { 14 } else { 16 }); $tb.FontWeight = 'SemiBold'
