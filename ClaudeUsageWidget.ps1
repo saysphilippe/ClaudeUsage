@@ -22,7 +22,7 @@ $strings = @{
         askCal_session = 'Run /usage in Claude Code and enter the % shown for the 5-hour limit:'
         askCal_weekly = 'Run /usage in Claude Code and enter the % shown for the weekly limit:'
         askLimit_session = 'Token limit for the 5-hour window:'; askLimit_weekly = 'Token limit for the weekly window:'
-        mRefresh = 'Refresh now'; mCalSession = 'Calibrate 5-hour limit from /usage %…'; mCalWeekly = 'Calibrate weekly limit from /usage %…'
+        mUpdate = 'Update the widget'; mRefresh = 'Refresh now'; mCalSession = 'Calibrate 5-hour limit from /usage %…'; mCalWeekly = 'Calibrate weekly limit from /usage %…'
         mSetSession = 'Set 5-hour limit manually…'; mSetWeekly = 'Set weekly limit manually…'
         mTopmost = 'Always on top'; mLanguage = 'Language'; mClose = 'Close'
         tabNow = 'Now'; tabHist = 'History'; hDaily = 'Tokens per day'; hToday = 'Today by hour'
@@ -61,7 +61,7 @@ $strings = @{
         askCal_session = 'Kjør /usage i Claude Code og skriv inn prosenten som vises for 5-timersgrensen:'
         askCal_weekly = 'Kjør /usage i Claude Code og skriv inn prosenten som vises for ukegrensen:'
         askLimit_session = 'Tokengrense for 5-timersvinduet:'; askLimit_weekly = 'Tokengrense for ukevinduet:'
-        mRefresh = 'Oppdater nå'; mCalSession = 'Kalibrer 5-timersgrensen fra /usage-%…'; mCalWeekly = 'Kalibrer ukegrensen fra /usage-%…'
+        mUpdate = 'Oppdater widgeten'; mRefresh = 'Oppdater nå'; mCalSession = 'Kalibrer 5-timersgrensen fra /usage-%…'; mCalWeekly = 'Kalibrer ukegrensen fra /usage-%…'
         mSetSession = 'Angi 5-timersgrensen manuelt…'; mSetWeekly = 'Angi ukegrensen manuelt…'
         mTopmost = 'Alltid øverst'; mLanguage = 'Språk'; mClose = 'Lukk'
         tabNow = 'Nå'; tabHist = 'Historikk'; hDaily = 'Tokens per dag'; hToday = 'I dag per time'
@@ -100,7 +100,7 @@ $strings = @{
         askCal_session = 'Kör /usage i Claude Code och ange procentsatsen som visas för 5-timmarsgränsen:'
         askCal_weekly = 'Kör /usage i Claude Code och ange procentsatsen som visas för veckogränsen:'
         askLimit_session = 'Tokengräns för 5-timmarsfönstret:'; askLimit_weekly = 'Tokengräns för veckofönstret:'
-        mRefresh = 'Uppdatera nu'; mCalSession = 'Kalibrera 5-timmarsgränsen från /usage-%…'; mCalWeekly = 'Kalibrera veckogränsen från /usage-%…'
+        mUpdate = 'Uppdatera widgeten'; mRefresh = 'Uppdatera nu'; mCalSession = 'Kalibrera 5-timmarsgränsen från /usage-%…'; mCalWeekly = 'Kalibrera veckogränsen från /usage-%…'
         mSetSession = 'Ange 5-timmarsgränsen manuellt…'; mSetWeekly = 'Ange veckogränsen manuellt…'
         mTopmost = 'Alltid överst'; mLanguage = 'Språk'; mClose = 'Stäng'
         tabNow = 'Nu'; tabHist = 'Historik'; hDaily = 'Tokens per dag'; hToday = 'I dag per timme'
@@ -139,7 +139,7 @@ $strings = @{
         askCal_session = 'Kør /usage i Claude Code, og indtast den procent, der vises for 5-timersgrænsen:'
         askCal_weekly = 'Kør /usage i Claude Code, og indtast den procent, der vises for ugegrænsen:'
         askLimit_session = 'Tokengrænse for 5-timersvinduet:'; askLimit_weekly = 'Tokengrænse for ugevinduet:'
-        mRefresh = 'Opdater nu'; mCalSession = 'Kalibrer 5-timersgrænsen fra /usage-%…'; mCalWeekly = 'Kalibrer ugegrænsen fra /usage-%…'
+        mUpdate = 'Opdater widgetten'; mRefresh = 'Opdater nu'; mCalSession = 'Kalibrer 5-timersgrænsen fra /usage-%…'; mCalWeekly = 'Kalibrer ugegrænsen fra /usage-%…'
         mSetSession = 'Angiv 5-timersgrænsen manuelt…'; mSetWeekly = 'Angiv ugegrænsen manuelt…'
         mTopmost = 'Altid øverst'; mLanguage = 'Sprog'; mClose = 'Luk'
         tabNow = 'Nu'; tabHist = 'Historik'; hDaily = 'Tokens pr. dag'; hToday = 'I dag pr. time'
@@ -1068,6 +1068,12 @@ $menu = New-Object Windows.Controls.ContextMenu
 $menuItems = @{}
 function AddItem($key, $action, $parent = $menu) { $mi = New-Object Windows.Controls.MenuItem; $mi.Add_Click($action); [void]$parent.Items.Add($mi); if ($key) { $menuItems[$key] = $mi }; $mi }
 AddItem 'mRefresh' { Refresh } | Out-Null
+# Update without needing install.ps1 on disk: the installer is fetched from GitHub, stops this widget and starts the new one.
+AddItem 'mUpdate' {
+    $l = if ($cfg.language -in @('en', 'no', 'sv', 'da')) { $cfg.language } else { 'en' }
+    $c = "`$env:CLAUDEUSAGE_LANG = '$l'; irm https://raw.githubusercontent.com/saysphilippe/ClaudeUsage/main/install.ps1 | iex"
+    Start-Process powershell.exe -ArgumentList '-NoProfile', '-ExecutionPolicy', 'Bypass', '-Command', $c
+} | Out-Null
 AddItem 'mCalSession' { Calibrate 'session' } | Out-Null
 AddItem 'mCalWeekly' { Calibrate 'weekly' } | Out-Null
 AddItem 'mSetSession' { SetLimit 'session' } | Out-Null

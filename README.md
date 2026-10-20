@@ -57,6 +57,8 @@ Or download [`Install.cmd`](Install.cmd) and double-click it.
 
 Running the installer again updates the widget and keeps your settings (limits, position, language).
 
+You do not need `install.ps1` on disk to update: right-click the widget and choose **Update the widget** (it fetches the installer from GitHub), or paste the one-line command from Option 1 into PowerShell. The installed folder (`%LOCALAPPDATA%\ClaudeUsage`) only holds the widget itself, not the installer.
+
 ## Using the widget
 
 - **Move it:** drag it with the left mouse button.
