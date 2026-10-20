@@ -119,3 +119,7 @@ powershell -NoProfile -ExecutionPolicy Bypass -File "$env:LOCALAPPDATA\ClaudeUsa
 ```
 
 This stops the widget and removes its files, shortcuts, settings and saved history.
+
+## Several accounts
+
+If you switch between Claude accounts (for example two Pro subscriptions), the status line script notes which account is signed in. The widget then keeps live figures, the weekly log, history and limits **per account**, counts each log line for the account that was signed in at the time, and lists every account with its 5-hour and weekly usage and reset times. The header shows which account the figures belong to; right-click > Account to pin one instead of following the signed-in account. Run `Install.cmd` again to update the status line script.

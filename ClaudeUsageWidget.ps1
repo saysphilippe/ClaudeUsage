@@ -460,7 +460,7 @@ function Read-Timeline {
             if ($f.Count -ge 2) { try { $tl.Add([pscustomobject]@{ t = [DateTimeOffset]::FromUnixTimeSeconds([int64]$f[0]).UtcDateTime; a = $f[1].Trim() }) } catch {} }
         }
     }
-    @($tl)
+    , $tl.ToArray()
 }
 function Get-AccountNames { @($script:timeline | ForEach-Object { $_.a } | Select-Object -Unique) }
 function Switch-Account($new) {
@@ -488,6 +488,28 @@ function Select-Items($all) {
         if ($tl[$k].a -eq $script:acct) { $out.Add($i) }
     }
     @($out)
+}
+# One line per account: its 5-hour and weekly usage and when each limit resets, from the last figures Claude Code reported
+# while that account was signed in. A window whose reset time has passed has started over, so it shows no figure.
+function Get-AccountLines {
+    $no = $cfg.language -in 'no', 'da', 'sv'
+    $wS = $(if ($no) { '5t' } else { '5h' }); $wW = $(if ($no) { 'uke' } else { 'week' })
+    $now = (Get-Date).ToUniversalTime()
+    foreach ($n in @(Get-AccountNames)) {
+        $parts = @()
+        $path = Join-Path $dir "live-$n.json"
+        $l = $null; if (Test-Path $path) { try { $l = Get-Content $path -Raw | ConvertFrom-Json } catch {} }
+        foreach ($w in @(@('five_hour', $wS), @('seven_day', $wW))) {
+            $x = if ($l) { $l.($w[0]) }
+            if (-not $x) { $parts += "$($w[1]) -"; continue }
+            $r = [DateTimeOffset]::FromUnixTimeSeconds([int64]$x.resets_at).LocalDateTime
+            if ($r -le (Get-Date)) { $parts += "$($w[1]) 0% ($(if ($no) { 'nullstilt' } else { 'reset' }))"; continue }
+            $when = if ($r.Date -eq (Get-Date).Date) { $r.ToString('HH:mm') } else { $r.ToString('ddd d. HH:mm') }
+            $parts += ('{0} {1:0}% {2} {3}' -f $w[1], [double]$x.pct, [char]0x2192, $when)
+        }
+        $mark = if ($n -eq $script:acct) { [char]0x25CF } else { [char]0x25CB }
+        '{0} {1}: {2}' -f $mark, (Short-Account $n), ($parts -join (' ' + [char]0x00B7 + ' '))
+    }
 }
 function Short-Account($a) { if ($a) { ($a -split '@')[0] } else { '' } }
 Load-History
@@ -585,6 +607,7 @@ function ModelName($m) {
         <StackPanel Name="pProjects" Margin="0,2,0,4"/>
         <TextBlock Name="hSince" Foreground="#666" FontSize="12"/>
       </StackPanel>
+      <TextBlock Name="accInfo" Foreground="#999" FontSize="12" Margin="0,8,0,0" TextWrapping="Wrap" Visibility="Collapsed"/>
       <TextBlock Name="upd" Foreground="#666" FontSize="12" Margin="0,6,0,0" TextWrapping="Wrap"/>
     </StackPanel>
   </Border>
@@ -593,7 +616,7 @@ function ModelName($m) {
 '@
 $win = [Windows.Markup.XamlReader]::Load((New-Object System.Xml.XmlNodeReader $xaml))
 $el = @{}
-'root','title','tabNow','tabHist','nowPanel','histPanel','sLabel','sBar','sSub','wLabel','wBar','wSub','overHint','upd','paceBox','pTitle','cPace','pText','cBox','cLabel','cTrack','cFore','cUsed','cSub','cFc','cStatus','moreBtn','moreBox','minBtn','mini','miniText',
+'root','title','tabNow','tabHist','nowPanel','histPanel','sLabel','sBar','sSub','wLabel','wBar','wSub','overHint','upd','accInfo','paceBox','pTitle','cPace','pText','cBox','cLabel','cTrack','cFore','cUsed','cSub','cFc','cStatus','moreBtn','moreBox','minBtn','mini','miniText',
 'rangePanel','hDaily','cDaily','hTotal','hToday','cToday','hTodayTotal','hModels','pModels','hProjects','pProjects','hSince' | ForEach-Object { $el[$_] = $win.FindName($_) }
 $win.Left = $cfg.left; $win.Top = $cfg.top; $win.Topmost = [bool]$cfg.topmost
 $script:last = $null
@@ -859,8 +882,11 @@ function Refresh {
     # than the one set here. The bar is then full and red, and "x over the limit" is shown instead of "0 left".
     $sp = 100 * $u.session / [double]$cfg.sessionLimit; if ($null -ne $u.sPct -and ($u.sPct -lt 99.5 -or $sp -lt $u.sPct)) { $sp = $u.sPct }
     $wp = 100 * $u.week / [double]$cfg.weeklyLimit; if ($null -ne $u.wPct -and ($u.wPct -lt 99.5 -or $wp -lt $u.wPct)) { $wp = $u.wPct }
-    $el.title.Text = (T 'title') + $(if (@(Get-AccountNames).Count -gt 1) { ' · ' + (Short-Account $script:acct) } else { '' })
+    $el.title.Text = (T 'title') + $(if ($script:acct) { ' · ' + (Short-Account $script:acct) } else { '' })
     Update-AccountMenu
+    $lines = @(Get-AccountLines)
+    $el.accInfo.Text = $lines -join "`n"
+    $el.accInfo.Visibility = $(if ($lines.Count -gt 0) { 'Visible' } else { 'Collapsed' })
     $el.tabNow.Text = T 'tabNow'; $el.tabHist.Text = T 'tabHist'
     $resetTxt = if ($u.reset) { $m = [int]($u.reset - (Get-Date).ToUniversalTime()).TotalMinutes; (T 'resets') -f [math]::Floor($m/60), ($m % 60) } else { '' }
     $el.sSub.Text = (Get-UsedText $u.session $cfg.sessionLimit) + $resetTxt
