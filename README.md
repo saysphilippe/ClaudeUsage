@@ -17,7 +17,7 @@ The widget can show its text in **English**, **Norwegian (Norsk)**, **Swedish (S
 - Windows 10 or 11 (uses the built-in Windows PowerShell 5.1 – nothing extra to install)
 - Claude Code, used on the same PC
 
-> **Claude Code only.** The widget measures usage from **Claude Code** (the command-line tool and its logs), not from chats in the Claude app or on claude.ai, and "Log in" signs in through Claude Code. If you only use the Claude app, the widget has nothing to read and will stay at 0 %. Install Claude Code first (`irm https://claude.ai/install.ps1 | iex` in PowerShell), or read the chat usage on claude.ai under Settings → Usage.
+> **Claude Code only.** The widget measures usage from **Claude Code** (the command-line tool and its logs), not from chats in the Claude app or on claude.ai, and "Log in" signs in through Claude Code. The Claude desktop app has a code tab that uses its own copy of Claude Code, and the widget can read that usage; "Log in" also finds that copy if Claude Code is not installed separately. Plain chats in the app cannot be measured, so if you only chat in the app the widget will stay at 0 %. Install Claude Code first (`irm https://claude.ai/install.ps1 | iex` in PowerShell), or read the chat usage on claude.ai under Settings → Usage.
 
 ## Install
 

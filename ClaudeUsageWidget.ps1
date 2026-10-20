@@ -511,6 +511,9 @@ function Find-Claude {
         (Join-Path $env:LOCALAPPDATA 'Programs\claude\claude.exe'),
         (Join-Path $env:LOCALAPPDATA 'AnthropicClaude\claude.exe')
     )) { if ($p -and (Test-Path $p)) { return $p } }
+    # The Claude desktop app carries its own copy of Claude Code (Microsoft Store install, or the classic installer): use the newest.
+    $bundled = @(Get-ChildItem -Path (Join-Path $env:LOCALAPPDATA 'Packages\Claude_*\LocalCache\Roaming\Claude\claude-code\*\claude.exe'), (Join-Path $env:APPDATA 'Claude\claude-code\*\claude.exe') -ErrorAction SilentlyContinue)
+    if ($bundled.Count) { return ($bundled | Sort-Object { try { [version]$_.Directory.Name } catch { [version]'0.0' } } -Descending | Select-Object -First 1).FullName }
     $null
 }
 function Start-Login($email) {
