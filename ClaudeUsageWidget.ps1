@@ -511,6 +511,24 @@ function Get-AccountLines {
         '{0} {1}: {2}' -f $mark, (Short-Account $n), ($parts -join (' ' + [char]0x00B7 + ' '))
     }
 }
+# Profile chips at the top: the full account name, the shown one highlighted. Clicking another one switches to it.
+function Draw-Profiles {
+    $names = @(Get-AccountNames)
+    $el.profBar.Children.Clear()
+    $el.profBar.Visibility = $(if ($names.Count -gt 0) { 'Visible' } else { 'Collapsed' })
+    foreach ($n in $names) {
+        $on = ($n -eq $script:acct)
+        $b = New-Object Windows.Controls.Border
+        $b.CornerRadius = 10; $b.Padding = '9,3'; $b.Margin = '0,0,6,4'; $b.Cursor = $(if ($names.Count -gt 1) { 'Hand' } else { 'Arrow' })
+        $b.Background = Brush $(if ($on) { '#D97757' } else { '#2C2C2C' })
+        $tb = New-Object Windows.Controls.TextBlock
+        $tb.Text = $n; $tb.FontSize = 12; $tb.Foreground = Brush $(if ($on) { '#1E1E1E' } else { '#BBB' }); $tb.FontWeight = $(if ($on) { 'SemiBold' } else { 'Normal' })
+        $b.Child = $tb; $b.Tag = $n
+        $b.ToolTip = $(if ($on) { $n } elseif ($cfg.language -eq 'no') { "Bytt til $n" } else { "Switch to $n" })
+        $b.Add_MouseLeftButtonDown({ param($s, $e) $e.Handled = $true; if ($s.Tag -ne $script:acct) { $cfg.account = $s.Tag; Save-Config; Refresh } })
+        [void]$el.profBar.Children.Add($b)
+    }
+}
 function Short-Account($a) { if ($a) { ($a -split '@')[0] } else { '' } }
 Load-History
 function Update-History($all) {
@@ -550,7 +568,7 @@ function ModelName($m) {
   <Border Name="mini" CornerRadius="8" Background="#1E1E1E" BorderBrush="#3A3A3A" BorderThickness="1" Padding="10,4" Cursor="Hand" Visibility="Collapsed">
     <TextBlock Name="miniText" FontSize="16" FontWeight="SemiBold"/>
   </Border>
-  <Border Name="root" CornerRadius="10" Background="#1E1E1E" BorderBrush="#3A3A3A" BorderThickness="1" Padding="16,12" Width="300">
+  <Border Name="root" CornerRadius="10" Background="#1E1E1E" BorderBrush="#3A3A3A" BorderThickness="1" Padding="16,12" Width="380">
     <StackPanel>
       <DockPanel Margin="0,0,0,6">
         <StackPanel Orientation="Horizontal" DockPanel.Dock="Right" VerticalAlignment="Center">
@@ -560,6 +578,7 @@ function ModelName($m) {
         </StackPanel>
         <TextBlock Name="title" Foreground="#D97757" FontWeight="SemiBold" FontSize="16"/>
       </DockPanel>
+      <WrapPanel Name="profBar" Margin="0,0,0,8" Visibility="Collapsed"/>
       <StackPanel Name="nowPanel">
         <TextBlock Name="sLabel" Foreground="#EEE" FontSize="14"/>
         <ProgressBar Name="sBar" Height="8" Maximum="100" Margin="0,3,0,2" Background="#333" BorderThickness="0" Foreground="#D97757"/>
@@ -579,7 +598,7 @@ function ModelName($m) {
           <StackPanel>
             <TextBlock Name="cLabel" Foreground="#EEE" FontSize="14"/>
             <!-- Solid part: used so far. Faint part: forecast for the whole period. -->
-            <Grid Name="cTrack" Width="268" Height="9" Margin="0,3,0,2" Background="#333" HorizontalAlignment="Left">
+            <Grid Name="cTrack" Width="348" Height="9" Margin="0,3,0,2" Background="#333" HorizontalAlignment="Left">
               <Rectangle Name="cFore" HorizontalAlignment="Left" RadiusX="2" RadiusY="2"/>
               <Rectangle Name="cUsed" HorizontalAlignment="Left" RadiusX="2" RadiusY="2"/>
             </Grid>
@@ -616,7 +635,7 @@ function ModelName($m) {
 '@
 $win = [Windows.Markup.XamlReader]::Load((New-Object System.Xml.XmlNodeReader $xaml))
 $el = @{}
-'root','title','tabNow','tabHist','nowPanel','histPanel','sLabel','sBar','sSub','wLabel','wBar','wSub','overHint','upd','accInfo','paceBox','pTitle','cPace','pText','cBox','cLabel','cTrack','cFore','cUsed','cSub','cFc','cStatus','moreBtn','moreBox','minBtn','mini','miniText',
+'root','title','tabNow','tabHist','nowPanel','histPanel','sLabel','sBar','sSub','wLabel','wBar','wSub','overHint','upd','accInfo','profBar','paceBox','pTitle','cPace','pText','cBox','cLabel','cTrack','cFore','cUsed','cSub','cFc','cStatus','moreBtn','moreBox','minBtn','mini','miniText',
 'rangePanel','hDaily','cDaily','hTotal','hToday','cToday','hTodayTotal','hModels','pModels','hProjects','pProjects','hSince' | ForEach-Object { $el[$_] = $win.FindName($_) }
 $win.Left = $cfg.left; $win.Top = $cfg.top; $win.Topmost = [bool]$cfg.topmost
 $script:last = $null
@@ -659,7 +678,7 @@ function Add-ShareRow($panel, $label, $value, $share, $color, $width) {
     [void]$panel.Children.Add($row)
 }
 
-$histWidth = 390; $chartW = $histWidth - 32
+$histWidth = 420; $chartW = $histWidth - 32
 $rangeButtons = foreach ($days in 7, 30, 90) {
     $b = New-Object Windows.Controls.TextBlock
     $b.Text = "${days}d"; $b.Tag = $days; $b.FontSize = 13; $b.Cursor = 'Hand'; $b.Margin = New-Object Windows.Thickness 6, 0, 0, 0
@@ -738,7 +757,7 @@ function Show-Tab($tab) {
     $hist = $tab -eq 'history'
     $el.nowPanel.Visibility = $(if ($hist) { 'Collapsed' } else { 'Visible' })
     $el.histPanel.Visibility = $(if ($hist) { 'Visible' } else { 'Collapsed' })
-    $el.root.Width = $(if ($hist) { $histWidth } else { 300 })
+    $el.root.Width = $(if ($hist) { $histWidth } else { 380 })
     $el.tabNow.Foreground = Brush $(if ($hist) { '#777' } else { '#EEE' })
     $el.tabHist.Foreground = Brush $(if ($hist) { '#EEE' } else { '#777' })
     if ($hist) { Draw-History }
@@ -882,8 +901,8 @@ function Refresh {
     # than the one set here. The bar is then full and red, and "x over the limit" is shown instead of "0 left".
     $sp = 100 * $u.session / [double]$cfg.sessionLimit; if ($null -ne $u.sPct -and ($u.sPct -lt 99.5 -or $sp -lt $u.sPct)) { $sp = $u.sPct }
     $wp = 100 * $u.week / [double]$cfg.weeklyLimit; if ($null -ne $u.wPct -and ($u.wPct -lt 99.5 -or $wp -lt $u.wPct)) { $wp = $u.wPct }
-    $el.title.Text = (T 'title') + $(if ($script:acct) { ' · ' + (Short-Account $script:acct) } else { '' })
-    Update-AccountMenu
+    $el.title.Text = (T 'title') + ''
+    Update-AccountMenu; Draw-Profiles
     $lines = @(Get-AccountLines)
     $el.accInfo.Text = $lines -join "`n"
     $el.accInfo.Visibility = $(if ($lines.Count -gt 0) { 'Visible' } else { 'Collapsed' })
