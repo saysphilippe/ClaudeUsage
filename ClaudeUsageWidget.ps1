@@ -472,7 +472,30 @@ function Switch-Account($new) {
     $cfg.limits = $script:limits
     Load-History; Save-Config
 }
+# The signed-in account is read from Claude Code's own file, so a new login shows up here at once (not only after the next reply).
+function Get-SignedIn {
+    try {
+        $p = Join-Path $env:USERPROFILE '.claude.json'
+        if ($env:CLAUDE_CONFIG_DIR -and (Test-Path (Join-Path $env:CLAUDE_CONFIG_DIR '.claude.json'))) { $p = Join-Path $env:CLAUDE_CONFIG_DIR '.claude.json' }
+        # Not ConvertFrom-Json: the file can hold keys that differ only by case, which PowerShell 5.1 rejects
+        if ((Get-Content $p -Raw) -match '"oauthAccount"\s*:\s*\{[^}]*?"emailAddress"\s*:\s*"([^"]+)"') { return ($matches[1].ToLower() -replace '[^a-z0-9@._-]', '_') }
+    } catch {}
+    $null
+}
+function Sync-SignedIn {
+    $a = Get-SignedIn; if (-not $a) { return }
+    $last = if (Test-Path $accPath) { @(Get-Content $accPath -Tail 1)[0] }
+    if ($last -and $last.Split(',')[1] -eq $a) { return }
+    $t = if ($last) { [DateTimeOffset]::UtcNow.ToUnixTimeSeconds() } else { 0 }
+    try { Add-Content $accPath ('{0},{1}' -f $t, $a) -Encoding ASCII } catch {}
+}
+# Opens Claude Code's login in a terminal (the browser opens from there). With an email the login page is pre-filled.
+function Start-Login($email) {
+    $cmd = if ($email) { "claude auth login --email '$email'" } else { 'claude auth login' }
+    Start-Process powershell.exe -ArgumentList '-NoExit', '-NoProfile', '-Command', $cmd
+}
 function Select-Account {
+    Sync-SignedIn
     $script:timeline = Read-Timeline
     $names = Get-AccountNames
     if (-not $names.Count) { return }
@@ -515,7 +538,7 @@ function Get-AccountLines {
 function Draw-Profiles {
     $names = @(Get-AccountNames)
     $el.profBar.Children.Clear()
-    $el.profBar.Visibility = $(if ($names.Count -gt 0) { 'Visible' } else { 'Collapsed' })
+    $el.profBar.Visibility = 'Visible'
     foreach ($n in $names) {
         $on = ($n -eq $script:acct)
         $b = New-Object Windows.Controls.Border
@@ -528,6 +551,24 @@ function Draw-Profiles {
         $b.Add_MouseLeftButtonDown({ param($s, $e) $e.Handled = $true; if ($s.Tag -ne $script:acct) { $cfg.account = $s.Tag; Save-Config; Refresh } })
         [void]$el.profBar.Children.Add($b)
     }
+    # "+ Log in": one entry per known account (re-login with the email filled in) and one for another account
+    $lb = New-Object Windows.Controls.Border
+    $lb.CornerRadius = 10; $lb.Padding = '9,3'; $lb.Margin = '0,0,6,4'; $lb.Cursor = 'Hand'; $lb.Background = Brush '#2C2C2C'
+    $lt = New-Object Windows.Controls.TextBlock; $lt.Text = '+ ' + $(if ($cfg.language -eq 'no') { 'Logg inn' } else { 'Log in' }); $lt.FontSize = 12; $lt.Foreground = Brush '#BBB'
+    $lb.Child = $lt
+    $lb.Add_MouseLeftButtonDown({ param($s, $e)
+        $e.Handled = $true
+        $m = New-Object Windows.Controls.ContextMenu
+        $no = $cfg.language -eq 'no'
+        foreach ($n in @(Get-AccountNames)) {
+            $mi = New-Object Windows.Controls.MenuItem; $mi.Header = $(if ($no) { "Logg inn som $n" } else { "Log in as $n" }); $mi.Tag = $n
+            $mi.Add_Click({ Start-Login $this.Tag }); [void]$m.Items.Add($mi)
+        }
+        $mi = New-Object Windows.Controls.MenuItem; $mi.Header = $(if ($no) { 'Logg inn på en annen konto…' } else { 'Log in to another account…' })
+        $mi.Add_Click({ Start-Login $null }); [void]$m.Items.Add($mi)
+        $m.PlacementTarget = $s; $m.IsOpen = $true
+    })
+    [void]$el.profBar.Children.Add($lb)
 }
 function Short-Account($a) { if ($a) { ($a -split '@')[0] } else { '' } }
 Load-History
