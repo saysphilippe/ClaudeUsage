@@ -570,6 +570,39 @@ function Draw-Profiles {
     })
     [void]$el.profBar.Children.Add($lb)
 }
+# Minimized: one line per account with its 5-hour usage and the time left until the next 5-hour session. An account that has
+# used up its 5 hours is frozen (red) until then. The shown account uses the widget's own figures, the others their last live figures.
+function Draw-Mini($sp, $u) {
+    $names = @(Get-AccountNames)
+    $no = $cfg.language -in 'no', 'da', 'sv'
+    $rows = @()
+    if (-not $names.Count) {
+        $rows += [pscustomobject]@{ n = ''; pct = $sp; mins = $(if ($u.reset) { ($u.reset - (Get-Date).ToUniversalTime()).TotalMinutes } else { $null }) }
+    } else {
+        foreach ($n in $names) {
+            if ($n -eq $script:acct) { $rows += [pscustomobject]@{ n = $n; pct = $sp; mins = $(if ($u.reset) { ($u.reset - (Get-Date).ToUniversalTime()).TotalMinutes } else { $null }) }; continue }
+            $l = $null; $path = Join-Path $dir "live-$n.json"
+            if (Test-Path $path) { try { $l = Get-Content $path -Raw | ConvertFrom-Json } catch {} }
+            $f = if ($l) { $l.five_hour }
+            $mins = $null; $pct = 0
+            if ($f) { $r = [DateTimeOffset]::FromUnixTimeSeconds([int64]$f.resets_at).UtcDateTime; $left = ($r - (Get-Date).ToUniversalTime()).TotalMinutes; if ($left -gt 0) { $mins = $left; $pct = [double]$f.pct } }
+            $rows += [pscustomobject]@{ n = $n; pct = $pct; mins = $mins }
+        }
+    }
+    $el.miniPanel.Children.Clear()
+    foreach ($r in $rows) {
+        $frozen = $r.pct -ge 99.5
+        $txt = '{0:0}%' -f $r.pct
+        if ($null -ne $r.mins) { $txt += ' ' + [char]0x00B7 + ' ' + (Duration $r.mins) }
+        if ($frozen) { $txt += ' ' + [char]0x00B7 + ' ' + $(if ($no) { 'fryst' } else { 'frozen' }) }
+        if ($r.n -and $rows.Count -gt 1) { $txt = (Short-Account $r.n) + '  ' + $txt }
+        $tb = New-Object Windows.Controls.TextBlock
+        $tb.Text = $txt; $tb.FontSize = $(if ($rows.Count -gt 1) { 14 } else { 16 }); $tb.FontWeight = 'SemiBold'
+        $tb.Foreground = Brush $(if ($frozen -or $r.pct -gt 100) { '#E5484D' } else { '#D97757' })
+        if ($r.n) { $tb.ToolTip = $r.n }
+        [void]$el.miniPanel.Children.Add($tb)
+    }
+}
 function Short-Account($a) { if ($a) { ($a -split '@')[0] } else { '' } }
 Load-History
 function Update-History($all) {
@@ -607,7 +640,7 @@ function ModelName($m) {
   <Grid>
   <!-- Minimized: only the 5-hour session %, in the bottom-right corner of the screen -->
   <Border Name="mini" CornerRadius="8" Background="#1E1E1E" BorderBrush="#3A3A3A" BorderThickness="1" Padding="10,4" Cursor="Hand" Visibility="Collapsed">
-    <TextBlock Name="miniText" FontSize="16" FontWeight="SemiBold"/>
+    <StackPanel Name="miniPanel"/>
   </Border>
   <Border Name="root" CornerRadius="10" Background="#1E1E1E" BorderBrush="#3A3A3A" BorderThickness="1" Padding="16,12" Width="380">
     <StackPanel>
@@ -676,7 +709,7 @@ function ModelName($m) {
 '@
 $win = [Windows.Markup.XamlReader]::Load((New-Object System.Xml.XmlNodeReader $xaml))
 $el = @{}
-'root','title','tabNow','tabHist','nowPanel','histPanel','sLabel','sBar','sSub','wLabel','wBar','wSub','overHint','upd','accInfo','profBar','paceBox','pTitle','cPace','pText','cBox','cLabel','cTrack','cFore','cUsed','cSub','cFc','cStatus','moreBtn','moreBox','minBtn','mini','miniText',
+'root','title','tabNow','tabHist','nowPanel','histPanel','sLabel','sBar','sSub','wLabel','wBar','wSub','overHint','upd','accInfo','profBar','paceBox','pTitle','cPace','pText','cBox','cLabel','cTrack','cFore','cUsed','cSub','cFc','cStatus','moreBtn','moreBox','minBtn','mini','miniPanel',
 'rangePanel','hDaily','cDaily','hTotal','hToday','cToday','hTodayTotal','hModels','pModels','hProjects','pProjects','hSince' | ForEach-Object { $el[$_] = $win.FindName($_) }
 $win.Left = $cfg.left; $win.Top = $cfg.top; $win.Topmost = [bool]$cfg.topmost
 $script:last = $null
@@ -953,7 +986,7 @@ function Refresh {
     $el.wSub.Text = Get-UsedText $u.week $cfg.weeklyLimit
     if ($u.weekReset) { $el.wSub.Text += (T 'weekResets') -f $u.weekReset.ToLocalTime().ToString('ddd d. MMM HH:mm') }
     Set-Meter $el.sLabel $el.sBar $el.sSub ((T 'session') -f $sp) $sp '#D97757'
-    $el.miniText.Text = '{0:0}%' -f $sp; $el.miniText.Foreground = Brush $(if ($sp -gt 100) { '#E5484D' } else { '#D97757' })
+    Draw-Mini $sp $u
     Set-Meter $el.wLabel $el.wBar $el.wSub ((T $(if ($u.weekReset) { 'weekFixed' } else { 'week' })) -f $wp) $wp '#6A9BCC'
     $uncalibrated = -not $u.liveAt -and [int64]$cfg.sessionLimit -eq 1000000
     Draw-Pace $all $u $wp
