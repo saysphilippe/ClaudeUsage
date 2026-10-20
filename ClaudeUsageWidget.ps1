@@ -45,6 +45,7 @@ $strings = @{
         askWeekReset = 'When does the weekly limit reset? Copy it from /usage (e.g. "Oct 9, 3pm") or type day and time (e.g. "Thu 15:00"):'
         badTime = 'Could not read that time. Try for example "Thu 15:00" or "09.10 15:00".'
         noClaude = 'Claude Code was not found on this computer, so the widget cannot open a sign-in. Install it (PowerShell: irm https://claude.ai/install.ps1 | iex), open a new window and try again.'
+        loginStart = 'Signing in to Claude. A browser window should open. If it does not, copy the link shown here and open it yourself, then paste the code back here. You can close this window when you are done.'
         calHint = 'The limits are not calibrated, so the credit estimate may be wrong. Right-click → Calibrate from /usage.'
         mCredit = 'Extra credits'; mCreditLimit = 'Set credit limit (USD)…'; mCreditSpent = 'Enter credits used from claude.ai…'; mCreditDay = 'Credit reset day…'
         askCreditLimit = 'Your monthly limit for extra credits in USD (0 hides the section):'
@@ -83,6 +84,7 @@ $strings = @{
         askWeekReset = 'Når nullstilles ukegrensen? Kopier fra /usage (f.eks. «Oct 9, 3pm») eller skriv dag og klokkeslett (f.eks. «tor 15:00»):'
         badTime = 'Klarte ikke å lese tidspunktet. Prøv for eksempel «tor 15:00» eller «09.10 15:00».'
         noClaude = 'Claude Code ble ikke funnet på denne maskinen, så widgeten kan ikke åpne innlogging. Installer det (PowerShell: irm https://claude.ai/install.ps1 | iex), åpne et nytt vindu og prøv igjen.'
+        loginStart = 'Logger inn på Claude. Et nettleservindu skal åpne seg. Gjør det ikke det, kopier lenken som vises her og åpne den selv, og lim koden tilbake her. Du kan lukke dette vinduet når du er ferdig.'
         calHint = 'Grensene er ikke kalibrert, så kreditt-anslaget kan bli feil. Høyreklikk → Kalibrer fra /usage.'
         mCredit = 'Ekstra kreditter'; mCreditLimit = 'Angi kredittgrense (USD)…'; mCreditSpent = 'Angi brukte kreditter fra claude.ai…'; mCreditDay = 'Dag kredittene nullstilles…'
         askCreditLimit = 'Månedlig grense for ekstra kreditter i USD (0 skjuler seksjonen):'
@@ -121,6 +123,7 @@ $strings = @{
         askWeekReset = 'När nollställs veckogränsen? Kopiera från /usage (t.ex. "Oct 9, 3pm") eller skriv dag och tid (t.ex. "tor 15:00"):'
         badTime = 'Kunde inte läsa tiden. Prova till exempel "tor 15:00" eller "09.10 15:00".'
         noClaude = 'Claude Code hittades inte på den här datorn, så widgeten kan inte öppna inloggning. Installera det (PowerShell: irm https://claude.ai/install.ps1 | iex), öppna ett nytt fönster och försök igen.'
+        loginStart = 'Loggar in på Claude. Ett webbläsarfönster ska öppnas. Gör det inte det, kopiera länken som visas här och öppna den själv, och klistra in koden här. Du kan stänga det här fönstret när du är klar.'
         calHint = 'Gränserna är inte kalibrerade, så kreditberäkningen kan bli fel. Högerklicka → Kalibrera från /usage.'
         mCredit = 'Extra krediter'; mCreditLimit = 'Ange kreditgräns (USD)…'; mCreditSpent = 'Ange använda krediter från claude.ai…'; mCreditDay = 'Dag krediterna nollställs…'
         askCreditLimit = 'Månadsgräns för extra krediter i USD (0 döljer avsnittet):'
@@ -159,6 +162,7 @@ $strings = @{
         askWeekReset = 'Hvornår nulstilles ugegrænsen? Kopiér fra /usage (f.eks. "Oct 9, 3pm") eller skriv dag og klokkeslæt (f.eks. "tor 15:00"):'
         badTime = 'Kunne ikke læse tidspunktet. Prøv f.eks. "tor 15:00" eller "09.10 15:00".'
         noClaude = 'Claude Code blev ikke fundet på denne computer, så widgetten kan ikke åbne login. Installer det (PowerShell: irm https://claude.ai/install.ps1 | iex), åbn et nyt vindue og prøv igen.'
+        loginStart = 'Logger ind på Claude. Et browservindue skal åbne sig. Gør det ikke det, kopier linket der vises her og åbn det selv, og indsæt koden her. Du kan lukke dette vindue, når du er færdig.'
         calHint = 'Grænserne er ikke kalibreret, så kreditoverslaget kan være forkert. Højreklik → Kalibrér fra /usage.'
         mCredit = 'Ekstra kreditter'; mCreditLimit = 'Angiv kreditgrænse (USD)…'; mCreditSpent = 'Angiv brugte kreditter fra claude.ai…'; mCreditDay = 'Dag kreditterne nulstilles…'
         askCreditLimit = 'Månedlig grænse for ekstra kreditter i USD (0 skjuler afsnittet):'
@@ -512,8 +516,23 @@ function Find-Claude {
 function Start-Login($email) {
     $exe = Find-Claude
     if (-not $exe) { [void][Windows.MessageBox]::Show((T 'noClaude'), (T 'title')); return }
-    $cmd = if ($email) { "& '$exe' auth login --email '$email'" } else { "& '$exe' auth login" }
-    Start-Process powershell.exe -WorkingDirectory $env:USERPROFILE -ArgumentList '-NoExit', '-NoProfile', '-Command', $cmd
+    # A script file instead of -Command: no quoting trouble with spaces in the path, and the window explains what it is doing.
+    # "claude auth login" waits quietly for the browser, and older versions do not have that command: then plain "claude" is
+    # started, which asks the user to sign in the first time (or type /login).
+    $lines = @(
+        '$ErrorActionPreference = "Continue"',
+        "Write-Host '$((T 'loginStart') -replace "'", "''")' -ForegroundColor Cyan",
+        'Write-Host ""',
+        "`$exe = '$($exe -replace "'", "''")'",
+        'Write-Host "claude: $exe"',
+        '& $exe --version',
+        'Write-Host ""',
+        $(if ($email) { "& `$exe auth login --email '$($email -replace "'", "''")'" } else { '& $exe auth login' }),
+        'if ($LASTEXITCODE -ne 0) { Write-Host ""; Write-Host "Exit code $LASTEXITCODE. Starting claude: choose to sign in, or type /login." -ForegroundColor Yellow; & $exe }'
+    )
+    $file = Join-Path $dir 'login.ps1'
+    [IO.File]::WriteAllText($file, ($lines -join "`r`n"), (New-Object Text.UTF8Encoding $true))
+    Start-Process powershell.exe -WorkingDirectory $env:USERPROFILE -ArgumentList '-NoExit', '-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', $file
 }
 function Select-Account {
     Sync-SignedIn
