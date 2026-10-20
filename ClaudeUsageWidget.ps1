@@ -8,7 +8,7 @@ $logRoot  = Join-Path $env:USERPROFILE '.claude\projects'
 $inv      = [Globalization.CultureInfo]::InvariantCulture
 
 $cfg = [ordered]@{ sessionLimit = 1000000; weeklyLimit = 15000000; topmost = $true; left = 100; top = 100; language = 'en'; tab = 'now'; historyRange = 30
-                   creditLimit = 0; creditResetDay = 1; creditBase = $null; creditBaseAt = $null; fx = $null; fxDate = ''; weeklyReset = $null; expanded = $false; minimized = $false }
+                   creditLimit = 0; creditResetDay = 1; creditBase = $null; creditBaseAt = $null; fx = $null; fxDate = ''; weeklyReset = $null; expanded = $false; minimized = $false; account = ''; limits = $null }
 if (Test-Path $cfgPath) {
     try { (Get-Content $cfgPath -Raw | ConvertFrom-Json).psobject.Properties | ForEach-Object { $cfg[$_.Name] = $_.Value } } catch {}
 }
@@ -268,8 +268,9 @@ function ConvertFrom-ResetText($text) {
 # The status line script (statusline.ps1) saves the exact usage Claude Code reports - the same
 # figures as /usage - to live.json. When present, the widget uses Claude's own windows and
 # recalibrates the limits from them, so no manual calibration is needed.
-$livePath = Join-Path $dir 'live.json'
+function Get-LivePath { if ($script:acct) { Join-Path $dir "live-$($script:acct).json" } else { Join-Path $dir 'live.json' } }
 function Get-Live {
+    $livePath = Get-LivePath
     if (-not (Test-Path $livePath)) { return $null }
     try { $l = Get-Content $livePath -Raw | ConvertFrom-Json } catch { return $null }
     $o = @{ at = [datetime]::Parse($l.at, $inv, 'RoundtripKind').ToUniversalTime() }
@@ -279,8 +280,8 @@ function Get-Live {
     $o
 }
 # statusline.ps1 also logs each new weekly percentage to live-log.csv (time,pct,reset), for the pace chart
-$liveLogPath = Join-Path $dir 'live-log.csv'
 function Get-LiveLog($reset) {
+    $liveLogPath = if ($script:acct) { Join-Path $dir "live-log-$($script:acct).csv" } else { Join-Path $dir 'live-log.csv' }
     if (-not (Test-Path $liveLogPath)) { return @() }
     foreach ($line in Get-Content $liveLogPath) {
         $f = $line.Split(','); if ($f.Count -lt 3) { continue }
@@ -422,9 +423,15 @@ function Duration([double]$minutes) {
 # history.json. A day is only overwritten when the logs show more usage for it.
 function ConvertTo-Counts($o) { $h = @{}; if ($o) { $o.psobject.Properties | ForEach-Object { $h[$_.Name] = [int64]$_.Value } }; $h }
 $script:history = @{}
-if (Test-Path $histPath) {
+function Get-HistPath { if ($script:acct) { Join-Path $dir "history-$($script:acct).json" } else { Join-Path $dir 'history.json' } }
+function Load-History {
+    $script:history = @{}
+    $path = Get-HistPath
+    # The first account inherits the history from before accounts were tracked
+    if (-not (Test-Path $path) -and $script:acct -and $script:timeline.Count -and $script:timeline[0].a -eq $script:acct) { $path = Join-Path $dir 'history.json' }
+    if (-not (Test-Path $path)) { return }
     try {
-        (Get-Content $histPath -Raw | ConvertFrom-Json).days.psobject.Properties | ForEach-Object {
+        (Get-Content $path -Raw | ConvertFrom-Json).days.psobject.Properties | ForEach-Object {
             $v = $_.Value
             $hours = if ($v.hours.value) { $v.hours.value } else { $v.hours }
             $projects = ConvertTo-Counts $v.projects
@@ -436,6 +443,54 @@ if (Test-Path $histPath) {
         }
     } catch {}
 }
+
+# --- Accounts ---------------------------------------------------------------
+# statusline.ps1 appends "time,account" to accounts.csv whenever the signed-in account changes. Each account
+# gets its own live figures, weekly log, history and limits, and every log line is counted for the account that
+# was signed in at that time (the Claude Code logs themselves are shared). Without accounts.csv nothing changes.
+$accPath = Join-Path $dir 'accounts.csv'
+$script:acct = $null; $script:timeline = @()
+$script:limits = @{}
+if ($cfg.limits) { $cfg.limits.psobject.Properties | ForEach-Object { $script:limits[$_.Name] = $_.Value } }
+function Read-Timeline {
+    $tl = New-Object System.Collections.Generic.List[object]
+    if (Test-Path $accPath) {
+        foreach ($l in Get-Content $accPath) {
+            $f = $l.Split(',')
+            if ($f.Count -ge 2) { try { $tl.Add([pscustomobject]@{ t = [DateTimeOffset]::FromUnixTimeSeconds([int64]$f[0]).UtcDateTime; a = $f[1].Trim() }) } catch {} }
+        }
+    }
+    @($tl)
+}
+function Get-AccountNames { @($script:timeline | ForEach-Object { $_.a } | Select-Object -Unique) }
+function Switch-Account($new) {
+    if ($script:acct) { $script:limits[$script:acct] = @{ sessionLimit = $cfg.sessionLimit; weeklyLimit = $cfg.weeklyLimit; weeklyReset = $cfg.weeklyReset } }
+    $l = $script:limits[$new]
+    if ($l) { $cfg.sessionLimit = $l.sessionLimit; $cfg.weeklyLimit = $l.weeklyLimit; $cfg.weeklyReset = $l.weeklyReset }
+    elseif ($script:acct) { $cfg.sessionLimit = 1000000; $cfg.weeklyLimit = 15000000; $cfg.weeklyReset = $null }  # a new account is calibrated from its own /usage figures
+    $script:acct = $new
+    $cfg.limits = $script:limits
+    Load-History; Save-Config
+}
+function Select-Account {
+    $script:timeline = Read-Timeline
+    $names = Get-AccountNames
+    if (-not $names.Count) { return }
+    $want = if ($cfg.account -and $names -contains $cfg.account) { $cfg.account } else { $script:timeline[-1].a }
+    if ($want -ne $script:acct) { Switch-Account $want }
+}
+# Keeps only the usage from the selected account (only needed when more than one account has been seen)
+function Select-Items($all) {
+    if (-not $script:acct -or @(Get-AccountNames).Count -lt 2) { return $all }
+    $tl = $script:timeline; $k = 0; $out = New-Object System.Collections.Generic.List[object]
+    foreach ($i in $all) {
+        while ($k + 1 -lt $tl.Count -and $tl[$k + 1].t -le $i.t) { $k++ }
+        if ($tl[$k].a -eq $script:acct) { $out.Add($i) }
+    }
+    @($out)
+}
+function Short-Account($a) { if ($a) { ($a -split '@')[0] } else { '' } }
+Load-History
 function Update-History($all) {
     $agg = @{}
     foreach ($i in $all) {
@@ -454,7 +509,7 @@ function Update-History($all) {
     }
     $cutoff = (Get-Date).AddDays(-400).ToString('yyyy-MM-dd', $inv)
     foreach ($k in @($script:history.Keys)) { if ($k -lt $cutoff) { $script:history.Remove($k); $changed = $true } }
-    if ($changed) { @{ version = 1; days = $script:history } | ConvertTo-Json -Depth 5 -Compress | Set-Content $histPath -Encoding UTF8 }
+    if ($changed) { @{ version = 1; days = $script:history } | ConvertTo-Json -Depth 5 -Compress | Set-Content (Get-HistPath) -Encoding UTF8 }
 }
 
 function Fmt([double]$n) { if ($n -ge 1e6) { '{0:0.0}M' -f ($n/1e6) } elseif ($n -ge 1e3) { '{0:0}K' -f ($n/1e3) } else { "$n" } }
@@ -796,14 +851,16 @@ function Draw-Credit($c, $u) {
 }
 function Refresh {
     Update-Fx
-    $all = Update-Data
+    Select-Account
+    $all = Select-Items (Update-Data)
     Update-History $all
     $u = Get-Usage $all; $script:last = $u
     # Percentages are not capped: above 100 % you are either on extra credits, or the real limit is higher
     # than the one set here. The bar is then full and red, and "x over the limit" is shown instead of "0 left".
     $sp = 100 * $u.session / [double]$cfg.sessionLimit; if ($null -ne $u.sPct -and ($u.sPct -lt 99.5 -or $sp -lt $u.sPct)) { $sp = $u.sPct }
     $wp = 100 * $u.week / [double]$cfg.weeklyLimit; if ($null -ne $u.wPct -and ($u.wPct -lt 99.5 -or $wp -lt $u.wPct)) { $wp = $u.wPct }
-    $el.title.Text = T 'title'
+    $el.title.Text = (T 'title') + $(if (@(Get-AccountNames).Count -gt 1) { ' · ' + (Short-Account $script:acct) } else { '' })
+    Update-AccountMenu
     $el.tabNow.Text = T 'tabNow'; $el.tabHist.Text = T 'tabHist'
     $resetTxt = if ($u.reset) { $m = [int]($u.reset - (Get-Date).ToUniversalTime()).TotalMinutes; (T 'resets') -f [math]::Floor($m/60), ($m % 60) } else { '' }
     $el.sSub.Text = (Get-UsedText $u.session $cfg.sessionLimit) + $resetTxt
@@ -877,6 +934,21 @@ $langItems = @{}
 foreach ($code in $langNames.Keys) {
     $li = AddItem $null { $cfg.language = $this.Tag; Save-Config; Set-MenuText; Refresh } $langMenu
     $li.Tag = $code; $li.Header = $langNames[$code]; $langItems[$code] = $li
+}
+$accMenu = New-Object Windows.Controls.MenuItem
+[void]$menu.Items.Add($accMenu)
+function Update-AccountMenu {
+    $names = @(Get-AccountNames)
+    $accMenu.Visibility = $(if ($names.Count -gt 1) { 'Visible' } else { 'Collapsed' })
+    $accMenu.Header = $(if ($cfg.language -eq 'no') { 'Konto' } else { 'Account' })
+    $accMenu.Items.Clear()
+    foreach ($n in @('') + $names) {
+        $mi = New-Object Windows.Controls.MenuItem
+        $mi.Header = $(if ($n) { $n } elseif ($cfg.language -eq 'no') { 'Automatisk (den som er innlogget)' } else { 'Automatic (the signed-in one)' })
+        $mi.Tag = $n; $mi.IsChecked = ($n -eq [string]$cfg.account) -or (-not $n -and -not $cfg.account)
+        $mi.Add_Click({ $cfg.account = $this.Tag; Save-Config; Refresh })
+        [void]$accMenu.Items.Add($mi)
+    }
 }
 AddItem 'mClose' { $win.Close() } | Out-Null
 function Set-MenuText {
