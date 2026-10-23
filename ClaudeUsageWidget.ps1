@@ -8,7 +8,7 @@ $logRoot  = Join-Path $env:USERPROFILE '.claude\projects'
 $inv      = [Globalization.CultureInfo]::InvariantCulture
 
 $cfg = [ordered]@{ sessionLimit = 1000000; weeklyLimit = 15000000; topmost = $true; left = 100; top = 100; language = 'en'; tab = 'now'; historyRange = 30
-                   creditLimit = 0; creditResetDay = 1; creditBase = $null; creditBaseAt = $null; fx = $null; fxDate = ''; weeklyReset = $null; expanded = $false; minimized = $false; account = ''; limits = $null }
+                   creditLimit = 0; creditResetDay = 1; creditBase = $null; creditBaseAt = $null; fx = $null; fxDate = ''; weeklyReset = $null; expanded = $false; minimized = $false; miniLeft = $null; miniTop = $null; account = ''; limits = $null }
 if (Test-Path $cfgPath) {
     try { (Get-Content $cfgPath -Raw | ConvertFrom-Json).psobject.Properties | ForEach-Object { $cfg[$_.Name] = $_.Value } } catch {}
 }
@@ -623,21 +623,24 @@ function Draw-Profiles {
 }
 # Minimized: one line per account with its 5-hour usage and the time left until the next 5-hour session. An account that has
 # used up its 5 hours is frozen (red) until then. The shown account uses the widget's own figures, the others their last live figures.
-function Draw-Mini($sp, $u) {
+function Draw-Mini($sp, $u, $wp) {
     $names = @(Get-AccountNames)
     $aw = Get-AccWords
     $rows = @()
     if (-not $names.Count) {
-        $rows += [pscustomobject]@{ n = ''; pct = $sp; mins = $(if ($u.reset) { ($u.reset - (Get-Date).ToUniversalTime()).TotalMinutes } else { $null }) }
+        $rows += [pscustomobject]@{ n = ''; pct = $sp; wpct = $wp; mins = $(if ($u.reset) { ($u.reset - (Get-Date).ToUniversalTime()).TotalMinutes } else { $null }) }
     } else {
         foreach ($n in $names) {
-            if ($n -eq $script:acct) { $rows += [pscustomobject]@{ n = $n; pct = $sp; mins = $(if ($u.reset) { ($u.reset - (Get-Date).ToUniversalTime()).TotalMinutes } else { $null }) }; continue }
+            if ($n -eq $script:acct) { $rows += [pscustomobject]@{ n = $n; pct = $sp; wpct = $wp; mins = $(if ($u.reset) { ($u.reset - (Get-Date).ToUniversalTime()).TotalMinutes } else { $null }) }; continue }
             $l = $null; $path = Join-Path $dir "live-$n.json"
             if (Test-Path $path) { try { $l = Get-Content $path -Raw | ConvertFrom-Json } catch {} }
             $f = if ($l) { $l.five_hour }
             $mins = $null; $pct = 0
             if ($f) { $r = [DateTimeOffset]::FromUnixTimeSeconds([int64]$f.resets_at).UtcDateTime; $left = ($r - (Get-Date).ToUniversalTime()).TotalMinutes; if ($left -gt 0) { $mins = $left; $pct = [double]$f.pct } }
-            $rows += [pscustomobject]@{ n = $n; pct = $pct; mins = $mins }
+            # The weekly figure of another account counts only until its own weekly reset
+            $wpct = $null; $wf = if ($l) { $l.seven_day }
+            if ($wf -and [DateTimeOffset]::FromUnixTimeSeconds([int64]$wf.resets_at).UtcDateTime -gt (Get-Date).ToUniversalTime()) { $wpct = [double]$wf.pct }
+            $rows += [pscustomobject]@{ n = $n; pct = $pct; wpct = $wpct; mins = $mins }
         }
     }
     $el.miniPanel.Children.Clear()
@@ -646,10 +649,11 @@ function Draw-Mini($sp, $u) {
         $txt = '{0:0}%' -f $r.pct
         if ($null -ne $r.mins) { $txt += ' ' + [char]0x00B7 + ' ' + (Duration $r.mins) }
         if ($frozen) { $txt += ' ' + [char]0x00B7 + ' ' + $($aw.frozen) }
+        if ($null -ne $r.wpct) { $txt += '  ' + [char]0x2502 + '  ' + $aw.w + ' ' + ('{0:0}%' -f $r.wpct) }
         if ($r.n -and $rows.Count -gt 1) { $txt = (Short-Account $r.n) + '  ' + $txt }
         $tb = New-Object Windows.Controls.TextBlock
         $tb.Text = $txt; $tb.FontSize = $(if ($rows.Count -gt 1) { 14 } else { 16 }); $tb.FontWeight = 'SemiBold'
-        $tb.Foreground = Brush $(if ($frozen -or $r.pct -gt 100) { '#E5484D' } else { '#D97757' })
+        $tb.Foreground = Brush $(if ($frozen -or $r.pct -gt 100 -or $r.wpct -ge 99.5) { '#E5484D' } else { '#D97757' })
         if ($r.n) { $tb.ToolTip = $r.n }
         [void]$el.miniPanel.Children.Add($tb)
     }
@@ -1037,7 +1041,7 @@ function Refresh {
     $el.wSub.Text = Get-UsedText $u.week $cfg.weeklyLimit
     if ($u.weekReset) { $el.wSub.Text += (T 'weekResets') -f $u.weekReset.ToLocalTime().ToString('ddd d. MMM HH:mm') }
     Set-Meter $el.sLabel $el.sBar $el.sSub ((T 'session') -f $sp) $sp '#D97757'
-    Draw-Mini $sp $u
+    Draw-Mini $sp $u $wp
     Set-Meter $el.wLabel $el.wBar $el.wSub ((T $(if ($u.weekReset) { 'weekFixed' } else { 'week' })) -f $wp) $wp '#6A9BCC'
     $uncalibrated = -not $u.liveAt -and [int64]$cfg.sessionLimit -eq 1000000
     Draw-Pace $all $u $wp
@@ -1162,6 +1166,14 @@ function Place-Mini {
     if ($src) { $m = $src.CompositionTarget.TransformToDevice; $sx = $m.M11; $sy = $m.M22 }
     $pt = New-Object Drawing.Point ([int]($cfg.left * $sx)), ([int]($cfg.top * $sy))
     $wa = [Windows.Forms.Screen]::FromPoint($pt).WorkingArea
+    if ($null -ne $cfg.miniLeft -and $null -ne $cfg.miniTop) {
+        # The spot the user dragged it to, on whichever monitor it was left, kept inside that monitor's work area
+        $mp = New-Object Drawing.Point ([int]([double]$cfg.miniLeft * $sx)), ([int]([double]$cfg.miniTop * $sy))
+        $wa = [Windows.Forms.Screen]::FromPoint($mp).WorkingArea
+        $win.Left = [math]::Max($wa.Left / $sx, [math]::Min([double]$cfg.miniLeft, $wa.Right / $sx - $win.ActualWidth))
+        $win.Top = [math]::Max($wa.Top / $sy, [math]::Min([double]$cfg.miniTop, $wa.Bottom / $sy - $win.ActualHeight))
+        return
+    }
     $win.Left = $wa.Right / $sx - $win.ActualWidth - 12
     $win.Top = $wa.Bottom / $sy - $win.ActualHeight - 12
 }
@@ -1172,7 +1184,14 @@ function Set-Minimized($on) {
     $win.UpdateLayout(); Keep-OnScreen
 }
 $el.minBtn.Add_MouseLeftButtonDown({ param($s, $e) Set-Minimized $true; $e.Handled = $true })
-$el.mini.Add_MouseLeftButtonDown({ param($s, $e) Set-Minimized $false; $e.Handled = $true })
+# Minimized: drag to move (the spot is saved in the settings), a plain click opens the full widget
+$el.mini.Add_MouseLeftButtonDown({ param($s, $e)
+    $e.Handled = $true
+    $l0 = $win.Left; $t0 = $win.Top
+    $win.DragMove()
+    if ([math]::Abs($win.Left - $l0) -lt 4 -and [math]::Abs($win.Top - $t0) -lt 4) { Set-Minimized $false; return }
+    $cfg.miniLeft = $win.Left; $cfg.miniTop = $win.Top; Save-Config
+})
 $timer = New-Object Windows.Threading.DispatcherTimer
 $timer.Interval = [TimeSpan]::FromSeconds(60); $timer.Add_Tick({ Refresh }); $timer.Start()
 Refresh

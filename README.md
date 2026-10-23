@@ -127,3 +127,7 @@ This stops the widget and removes its files, shortcuts, settings and saved histo
 ## Several accounts
 
 If you switch between Claude accounts (for example two Pro subscriptions), the status line script notes which account is signed in. The widget then keeps live figures, the weekly log, history and limits **per account**, counts each log line for the account that was signed in at the time, and lists every account with its 5-hour and weekly usage and reset times. The header shows which account the figures belong to; right-click > Account to pin one instead of following the signed-in account. Run `Install.cmd` again to update the status line script.
+
+## Minimized view
+
+Minimizing (the dash button) leaves a small box with the 5-hour %, the time to the next session and the weekly %, one line per account. Drag it anywhere on any monitor; the spot is saved in the widget settings (miniLeft/miniTop in config.json) and used the next time you minimize. A plain click opens the full widget again.
