@@ -426,6 +426,13 @@ function Duration([double]$minutes) {
     if ($m -ge 60) { '{0}{1} {2:00}m' -f [math]::Floor($m / 60), $h, ($m % 60) } else { "${m}m" }
 }
 
+# Time left as days, hours and minutes (the weekly limit): 3d 4h 12m
+function DurationLong([double]$minutes) {
+    $m = [int][math]::Max(1, $minutes); $h = if ($cfg.language -in 'no', 'da') { 't' } else { 'h' }
+    $d = [math]::Floor($m / 1440); $hh = [math]::Floor(($m % 1440) / 60); $mm = $m % 60
+    if ($d -gt 0) { "${d}d ${hh}${h} ${mm}m" } elseif ($hh -gt 0) { "${hh}${h} ${mm}m" } else { "${mm}m" }
+}
+
 # --- History ----------------------------------------------------------------
 # Claude Code deletes old logs (30 days by default), so daily totals are kept in
 # history.json. A day is only overwritten when the logs show more usage for it.
@@ -628,19 +635,19 @@ function Draw-Mini($sp, $u, $wp) {
     $aw = Get-AccWords
     $rows = @()
     if (-not $names.Count) {
-        $rows += [pscustomobject]@{ n = ''; pct = $sp; wpct = $wp; mins = $(if ($u.reset) { ($u.reset - (Get-Date).ToUniversalTime()).TotalMinutes } else { $null }) }
+        $rows += [pscustomobject]@{ n = ''; pct = $sp; wpct = $wp; wmins = $(if ($u.weekReset) { ($u.weekReset - (Get-Date).ToUniversalTime()).TotalMinutes } else { $null }); mins = $(if ($u.reset) { ($u.reset - (Get-Date).ToUniversalTime()).TotalMinutes } else { $null }) }
     } else {
         foreach ($n in $names) {
-            if ($n -eq $script:acct) { $rows += [pscustomobject]@{ n = $n; pct = $sp; wpct = $wp; mins = $(if ($u.reset) { ($u.reset - (Get-Date).ToUniversalTime()).TotalMinutes } else { $null }) }; continue }
+            if ($n -eq $script:acct) { $rows += [pscustomobject]@{ n = $n; pct = $sp; wpct = $wp; wmins = $(if ($u.weekReset) { ($u.weekReset - (Get-Date).ToUniversalTime()).TotalMinutes } else { $null }); mins = $(if ($u.reset) { ($u.reset - (Get-Date).ToUniversalTime()).TotalMinutes } else { $null }) }; continue }
             $l = $null; $path = Join-Path $dir "live-$n.json"
             if (Test-Path $path) { try { $l = Get-Content $path -Raw | ConvertFrom-Json } catch {} }
             $f = if ($l) { $l.five_hour }
             $mins = $null; $pct = 0
             if ($f) { $r = [DateTimeOffset]::FromUnixTimeSeconds([int64]$f.resets_at).UtcDateTime; $left = ($r - (Get-Date).ToUniversalTime()).TotalMinutes; if ($left -gt 0) { $mins = $left; $pct = [double]$f.pct } }
             # The weekly figure of another account counts only until its own weekly reset
-            $wpct = $null; $wf = if ($l) { $l.seven_day }
-            if ($wf -and [DateTimeOffset]::FromUnixTimeSeconds([int64]$wf.resets_at).UtcDateTime -gt (Get-Date).ToUniversalTime()) { $wpct = [double]$wf.pct }
-            $rows += [pscustomobject]@{ n = $n; pct = $pct; wpct = $wpct; mins = $mins }
+            $wpct = $null; $wmins = $null; $wf = if ($l) { $l.seven_day }
+            if ($wf) { $wl = ([DateTimeOffset]::FromUnixTimeSeconds([int64]$wf.resets_at).UtcDateTime - (Get-Date).ToUniversalTime()).TotalMinutes; if ($wl -gt 0) { $wpct = [double]$wf.pct; $wmins = $wl } }
+            $rows += [pscustomobject]@{ n = $n; pct = $pct; wpct = $wpct; wmins = $wmins; mins = $mins }
         }
     }
     $el.miniPanel.Children.Clear()
@@ -649,7 +656,7 @@ function Draw-Mini($sp, $u, $wp) {
         $txt = '{0:0}%' -f $r.pct
         if ($null -ne $r.mins) { $txt += ' ' + [char]0x00B7 + ' ' + (Duration $r.mins) }
         if ($frozen) { $txt += ' ' + [char]0x00B7 + ' ' + $($aw.frozen) }
-        if ($null -ne $r.wpct) { $txt += '  ' + [char]0x2502 + '  ' + $aw.w + ' ' + ('{0:0}%' -f $r.wpct) }
+        if ($null -ne $r.wpct) { $txt += '  ' + [char]0x2502 + '  ' + $aw.w + ' ' + ('{0:0}%' -f $r.wpct); if ($null -ne $r.wmins) { $txt += ' ' + [char]0x00B7 + ' ' + (DurationLong $r.wmins) } }
         if ($r.n -and $rows.Count -gt 1) { $txt = (Short-Account $r.n) + '  ' + $txt }
         $tb = New-Object Windows.Controls.TextBlock
         $tb.Text = $txt; $tb.FontSize = $(if ($rows.Count -gt 1) { 14 } else { 16 }); $tb.FontWeight = 'SemiBold'
@@ -1039,7 +1046,7 @@ function Refresh {
     $resetTxt = if ($u.reset) { $m = [int]($u.reset - (Get-Date).ToUniversalTime()).TotalMinutes; (T 'resets') -f [math]::Floor($m/60), ($m % 60) } else { '' }
     $el.sSub.Text = (Get-UsedText $u.session $cfg.sessionLimit) + $resetTxt
     $el.wSub.Text = Get-UsedText $u.week $cfg.weeklyLimit
-    if ($u.weekReset) { $el.wSub.Text += (T 'weekResets') -f $u.weekReset.ToLocalTime().ToString('ddd d. MMM HH:mm') }
+    if ($u.weekReset) { $el.wSub.Text += (T 'weekResets') -f $u.weekReset.ToLocalTime().ToString('ddd d. MMM HH:mm'); $el.wSub.Text += ' (' + (DurationLong ($u.weekReset - (Get-Date).ToUniversalTime()).TotalMinutes) + ')' }
     Set-Meter $el.sLabel $el.sBar $el.sSub ((T 'session') -f $sp) $sp '#D97757'
     Draw-Mini $sp $u $wp
     Set-Meter $el.wLabel $el.wBar $el.wSub ((T $(if ($u.weekReset) { 'weekFixed' } else { 'week' })) -f $wp) $wp '#6A9BCC'
