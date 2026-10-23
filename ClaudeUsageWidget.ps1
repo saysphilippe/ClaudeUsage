@@ -656,7 +656,7 @@ function Draw-Mini($sp, $u, $wp) {
         $txt = '{0:0}%' -f $r.pct
         if ($null -ne $r.mins) { $txt += ' ' + [char]0x00B7 + ' ' + (Duration $r.mins) }
         if ($frozen) { $txt += ' ' + [char]0x00B7 + ' ' + $($aw.frozen) }
-        if ($null -ne $r.wpct) { $txt += '  ' + [char]0x2502 + '  ' + $aw.w + ' ' + ('{0:0}%' -f $r.wpct); if ($null -ne $r.wmins) { $txt += ' ' + [char]0x00B7 + ' ' + (DurationLong $r.wmins) } }
+        if ($null -ne $r.wpct) { $txt += '  ' + [char]0x2502 + '  ' + ('{0:0}%' -f $r.wpct); if ($null -ne $r.wmins) { $txt += ' ' + [char]0x00B7 + ' ' + (DurationLong $r.wmins) } }
         if ($r.n -and $rows.Count -gt 1) { $txt = (Short-Account $r.n) + '  ' + $txt }
         $tb = New-Object Windows.Controls.TextBlock
         $tb.Text = $txt; $tb.FontSize = $(if ($rows.Count -gt 1) { 14 } else { 16 }); $tb.FontWeight = 'SemiBold'
