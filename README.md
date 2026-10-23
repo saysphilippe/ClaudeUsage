@@ -1,27 +1,27 @@
-# Claude Usage widget
+﻿# Claude Usage widget
 
 A small always-on-top Windows desktop widget that shows how much of your Claude Code usage you have spent:
 
-- **5-hour session** – tokens used in the current 5-hour window, how much is left, and when it resets
-- **Weekly limit** – tokens used this week and when the weekly limit resets (or over the last 7 days, until you enter the reset time)
-- **History tab** – charts of tokens per day (7, 30 or 90 days) and today by hour, plus your most-used models and projects
+- **5-hour session** â€“ tokens used in the current 5-hour window, how much is left, and when it resets
+- **Weekly limit** â€“ tokens used this week and when the weekly limit resets (or over the last 7 days, until you enter the reset time)
+- **History tab** â€“ charts of tokens per day (7, 30 or 90 days) and today by hour, plus your most-used models and projects
 
 It reads the local Claude Code logs in `%USERPROFILE%\.claude\projects`. Nothing is sent anywhere, and no API key or login is needed.
 
-**Your own account only:** the widget never signs in to Claude and contains no credentials. It only reads the logs Claude Code writes on *your* PC, so it always shows the usage of whoever is signed in to Claude Code on that Windows user account – never the author's or anyone else's.
+**Your own account only:** the widget never signs in to Claude and contains no credentials. It only reads the logs Claude Code writes on *your* PC, so it always shows the usage of whoever is signed in to Claude Code on that Windows user account â€“ never the author's or anyone else's.
 
 The widget can show its text in **English**, **Norwegian (Norsk)**, **Swedish (Svenska)** or **Danish (Dansk)**. You choose the language during installation and can change it later from the right-click menu.
 
 ## Requirements
 
-- Windows 10 or 11 (uses the built-in Windows PowerShell 5.1 – nothing extra to install)
+- Windows 10 or 11 (uses the built-in Windows PowerShell 5.1 â€“ nothing extra to install)
 - Claude Code, used on the same PC
 
-> **Claude Code only.** The widget measures usage from **Claude Code** (the command-line tool and its logs), not from chats in the Claude app or on claude.ai, and "Log in" signs in through Claude Code. The Claude desktop app has a code tab that uses its own copy of Claude Code, and the widget can read that usage; "Log in" also finds that copy if Claude Code is not installed separately. Plain chats in the app cannot be measured, so if you only chat in the app the widget will stay at 0 %. Install Claude Code first (`irm https://claude.ai/install.ps1 | iex` in PowerShell), or read the chat usage on claude.ai under Settings → Usage.
+> **Claude Code only.** The widget measures usage from **Claude Code** (the command-line tool and its logs), not from chats in the Claude app or on claude.ai, and "Log in" signs in through Claude Code. The Claude desktop app has a code tab that uses its own copy of Claude Code, and the widget can read that usage; "Log in" also finds that copy if Claude Code is not installed separately. Plain chats in the app cannot be measured, so if you only chat in the app the widget will stay at 0 %. Install Claude Code first (`irm https://claude.ai/install.ps1 | iex` in PowerShell), or read the chat usage on claude.ai under Settings â†’ Usage.
 
 ## Install
 
-### Option 1 – one-line install
+### Option 1 â€“ one-line install
 
 Open PowerShell and run:
 
@@ -31,9 +31,9 @@ irm https://raw.githubusercontent.com/saysphilippe/ClaudeUsage/main/install.ps1 
 
 Or download [`Install.cmd`](Install.cmd) and double-click it.
 
-### Option 2 – install from a downloaded copy
+### Option 2 â€“ install from a downloaded copy
 
-1. Download the repository (**Code → Download ZIP**, then extract it) or clone it:
+1. Download the repository (**Code â†’ Download ZIP**, then extract it) or clone it:
    ```powershell
    git clone https://github.com/saysphilippe/ClaudeUsage.git
    ```
@@ -46,7 +46,7 @@ Or download [`Install.cmd`](Install.cmd) and double-click it.
 
 1. Asks which language the widget should use:
    ```
-   Choose display language / Velg språk / Välj språk / Vælg sprog:
+   Choose display language / Velg sprÃ¥k / VÃ¤lj sprÃ¥k / VÃ¦lg sprog:
      1) English
      2) Norsk
      3) Svenska
@@ -71,7 +71,7 @@ You do not need `install.ps1` on disk to update: right-click the widget and choo
 
 - **Tokens per day:** choose **7d**, **30d** or **90d**. Hover over a bar to see the date and exact amount. Today's bar is lighter.
 - **Today by hour:** shows when you used Claude today. The current hour is lighter.
-- **Models** and **Top projects:** the share of tokens per model (for example Opus 5.5 and Sonnet 5.5) and per project folder over the selected period. Sessions started outside a project – in the Windows folder (for example `C:\Windows\System32`, where an administrator terminal opens), your home folder or the root of a drive – are grouped as **No project**. To get them counted per project, start Claude Code from the project folder.
+- **Models** and **Top projects:** the share of tokens per model (for example Opus 5.5 and Sonnet 5.5) and per project folder over the selected period. Sessions started outside a project â€“ in the Windows folder (for example `C:\Windows\System32`, where an administrator terminal opens), your home folder or the root of a drive â€“ are grouped as **No project**. To get them counted per project, start Claude Code from the project folder.
 
 Claude Code deletes its own logs after 30 days by default. The widget therefore keeps a daily summary in `%LOCALAPPDATA%\ClaudeUsage\history.json`, so the history keeps growing beyond that. It only covers the time since you installed the widget, plus whatever logs Claude Code still had at that point.
 
@@ -90,27 +90,27 @@ Settings are saved in `%LOCALAPPDATA%\ClaudeUsage\config.json`. Reinstalling kee
 
 > Without the status line below, the percentages are estimates based on your local logs. Calibrate them against `/usage` for the best accuracy.
 
-**Over 100 %:** the percentage is not capped. Above the limit the bar turns red, the line shows how much you are *over* (for example "1.1M used · 98K over the limit") and a note explains why: you are using extra credits, or the real limit is higher than the one set in the widget. If `/usage` in Claude Code shows less than the widget, calibrate (right-click → Calibrate …) so the widget matches.
+**Over 100 %:** the percentage is not capped. Above the limit the bar turns red, the line shows how much you are *over* (for example "1.1M used Â· 98K over the limit") and a note explains why: you are using extra credits, or the real limit is higher than the one set in the widget. If `/usage` in Claude Code shows less than the widget, calibrate (right-click â†’ Calibrate â€¦) so the widget matches.
 
 ### Exact figures from Claude Code (status line)
 
-With a Pro or Max plan, Claude Code reports your exact usage – the same percentages and reset times as `/usage` – to its [status line](https://code.claude.com/docs/en/statusline). The installer adds a small status line script (`statusline.ps1`) that saves these figures for the widget and shows a short line at the bottom of Claude Code, for example `Opus 5.5 · 5h 37% (→14:05) · week 21% · context 12%`.
+With a Pro or Max plan, Claude Code reports your exact usage â€“ the same percentages and reset times as `/usage` â€“ to its [status line](https://code.claude.com/docs/en/statusline). The installer adds a small status line script (`statusline.ps1`) that saves these figures for the widget and shows a short line at the bottom of Claude Code, for example `Opus 5.5 Â· 5h 37% (â†’14:05) Â· week 21% Â· context 12%`.
 
 The widget then uses Claude's own 5-hour and weekly windows, shows when they reset, and recalibrates the limits by itself, so you no longer need to calibrate by hand. The figures update each time Claude Code replies, and the footer shows when they were last received. If you already have a status line of your own, the installer leaves it alone and the widget estimates from your logs as before. Uninstalling removes the status line again.
 
 ### Pace this week
 
-Under the weekly limit, a chart compares your usage this week (blue) with an even pace up to the weekly reset (grey dashed). With the status line, the blue line follows the weekly percentages Claude Code reported – the same figures as `/usage` – which the status line logs in `live-log.csv`. Before the first reported figure of the week, its shape comes from your local logs. A dashed line shows where you end up at your average pace so far. The text below says how much you can use per day and still stay within the limit, or – if you are going too fast – when you will reach it.
+Under the weekly limit, a chart compares your usage this week (blue) with an even pace up to the weekly reset (grey dashed). With the status line, the blue line follows the weekly percentages Claude Code reported â€“ the same figures as `/usage` â€“ which the status line logs in `live-log.csv`. Before the first reported figure of the week, its shape comes from your local logs. A dashed line shows where you end up at your average pace so far. The text below says how much you can use per day and still stay within the limit, or â€“ if you are going too fast â€“ when you will reach it.
 
 ### Extra credits (cost control)
 
-If your plan lets you use extra credits once you hit your limits (for example Pro with a monthly spend limit), right-click → **Extra credits → Set credit limit (USD)** and enter that limit. The Now tab then shows a credits section:
+If your plan lets you use extra credits once you hit your limits (for example Pro with a monthly spend limit), right-click â†’ **Extra credits â†’ Set credit limit (USD)** and enter that limit. The Now tab then shows a credits section:
 
 - **Bar:** the solid part is what you have used this period. The faint part is the forecast for the whole period at your current pace, and it turns red if the forecast passes the limit.
 - **Used and left** in USD, plus your local currency (NOK, SEK or DKK, at Norges Bank's daily rate) when the widget is in Norwegian, Swedish or Danish.
 - **Status line:** whether credits are being used right now, how much per hour, and when they run out at this pace. If you are still inside your plan, it shows when you will reach the 5-hour limit.
 
-The cost is estimated from Anthropic's API list prices for each message sent while you were over the 5-hour or weekly limit. The estimate is only as good as your limits, so calibrate them from `/usage` first. For an exact figure, use **Extra credits → Enter credits used from claude.ai** with the amount shown under Settings → Usage on claude.ai. The widget then counts on from that amount. **Credit reset day** sets the day of the month the period starts (default: the 1st). Setting the limit to 0 hides the section.
+The cost is estimated from Anthropic's API list prices for each message sent while you were over the 5-hour or weekly limit. The estimate is only as good as your limits, so calibrate them from `/usage` first. For an exact figure, use **Extra credits â†’ Enter credits used from claude.ai** with the amount shown under Settings â†’ Usage on claude.ai. The widget then counts on from that amount. **Credit reset day** sets the day of the month the period starts (default: the 1st). Setting the limit to 0 hides the section.
 
 The widget only sees Claude Code on this PC. Usage in the Claude app or on claude.ai counts against the same limits but is not shown.
 
@@ -131,3 +131,6 @@ If you switch between Claude accounts (for example two Pro subscriptions), the s
 ## Minimized view
 
 Minimizing (the dash button) leaves a small box with the 5-hour %, the time to the next session and the weekly %, one line per account. Drag it anywhere on any monitor; the spot is saved in the widget settings (miniLeft/miniTop in config.json) and used the next time you minimize. A plain click opens the full widget again.
+
+The **Mini** tab (next to Now and History) lets you choose what the minimized view shows: 5-hour %, time left in the session, the word "frozen", weekly %, time left of the week and the account name. The choice is saved in config.json (`miniShow`). More than a day left of the week shows only whole days (`3d`).
+

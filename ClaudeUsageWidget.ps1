@@ -8,7 +8,7 @@ $logRoot  = Join-Path $env:USERPROFILE '.claude\projects'
 $inv      = [Globalization.CultureInfo]::InvariantCulture
 
 $cfg = [ordered]@{ sessionLimit = 1000000; weeklyLimit = 15000000; topmost = $true; left = 100; top = 100; language = 'en'; tab = 'now'; historyRange = 30
-                   creditLimit = 0; creditResetDay = 1; creditBase = $null; creditBaseAt = $null; fx = $null; fxDate = ''; weeklyReset = $null; expanded = $false; minimized = $false; miniLeft = $null; miniTop = $null; account = ''; limits = $null }
+                   creditLimit = 0; creditResetDay = 1; creditBase = $null; creditBaseAt = $null; fx = $null; fxDate = ''; weeklyReset = $null; expanded = $false; minimized = $false; miniLeft = $null; miniTop = $null; miniShow = $null; account = ''; limits = $null }
 if (Test-Path $cfgPath) {
     try { (Get-Content $cfgPath -Raw | ConvertFrom-Json).psobject.Properties | ForEach-Object { $cfg[$_.Name] = $_.Value } } catch {}
 }
@@ -426,11 +426,11 @@ function Duration([double]$minutes) {
     if ($m -ge 60) { '{0}{1} {2:00}m' -f [math]::Floor($m / 60), $h, ($m % 60) } else { "${m}m" }
 }
 
-# Time left as days, hours and minutes (the weekly limit): 3d 4h 12m
+# Time left for the weekly limit: more than a day shows only whole days (3d), otherwise 1d 0h 0m / 4h 12m / 9m
 function DurationLong([double]$minutes) {
     $m = [int][math]::Max(1, $minutes); $h = if ($cfg.language -in 'no', 'da') { 't' } else { 'h' }
     $d = [math]::Floor($m / 1440); $hh = [math]::Floor(($m % 1440) / 60); $mm = $m % 60
-    if ($d -gt 0) { "${d}d ${hh}${h} ${mm}m" } elseif ($hh -gt 0) { "${hh}${h} ${mm}m" } else { "${mm}m" }
+    if ($m -gt 1440) { "${d}d" } elseif ($d -gt 0) { "${d}d ${hh}${h} ${mm}m" } elseif ($hh -gt 0) { "${hh}${h} ${mm}m" } else { "${mm}m" }
 }
 
 # --- History ----------------------------------------------------------------
@@ -651,18 +651,55 @@ function Draw-Mini($sp, $u, $wp) {
         }
     }
     $el.miniPanel.Children.Clear()
+    $mo = Get-MiniOpts
     foreach ($r in $rows) {
         $frozen = $r.pct -ge 99.5
-        $txt = '{0:0}%' -f $r.pct
-        if ($null -ne $r.mins) { $txt += ' ' + [char]0x00B7 + ' ' + (Duration $r.mins) }
-        if ($frozen) { $txt += ' ' + [char]0x00B7 + ' ' + $($aw.frozen) }
-        if ($null -ne $r.wpct) { $txt += '  ' + [char]0x2502 + '  ' + ('{0:0}%' -f $r.wpct); if ($null -ne $r.wmins) { $txt += ' ' + [char]0x00B7 + ' ' + (DurationLong $r.wmins) } }
-        if ($r.n -and $rows.Count -gt 1) { $txt = (Short-Account $r.n) + '  ' + $txt }
+        $dot = ' ' + [char]0x00B7 + ' '
+        $a = @(); $b = @()
+        if ($mo.pct5) { $a += '{0:0}%' -f $r.pct }
+        if ($mo.time5 -and $null -ne $r.mins) { $a += Duration $r.mins }
+        if ($mo.frozen -and $frozen) { $a += $aw.frozen }
+        if ($null -ne $r.wpct) {
+            if ($mo.pctW) { $b += '{0:0}%' -f $r.wpct }
+            if ($mo.timeW -and $null -ne $r.wmins) { $b += DurationLong $r.wmins }
+        }
+        $txt = ($a -join $dot)
+        if ($b.Count) { $txt += $(if ($txt) { '  ' + [char]0x2502 + '  ' } else { '' }) + ($b -join $dot) }
+        if (-not $txt) { $txt = [char]0x2026 }
+        if ($mo.acct -and $r.n -and $rows.Count -gt 1) { $txt = (Short-Account $r.n) + '  ' + $txt }
         $tb = New-Object Windows.Controls.TextBlock
         $tb.Text = $txt; $tb.FontSize = $(if ($rows.Count -gt 1) { 14 } else { 16 }); $tb.FontWeight = 'SemiBold'
         $tb.Foreground = Brush $(if ($frozen -or $r.pct -gt 100 -or $r.wpct -ge 99.5) { '#E5484D' } else { '#D97757' })
         if ($r.n) { $tb.ToolTip = $r.n }
         [void]$el.miniPanel.Children.Add($tb)
+    }
+}
+# What the minimized view shows, chosen on the Mini tab. Everything is on until the user turns it off.
+$script:miniKeys = 'pct5', 'time5', 'frozen', 'pctW', 'timeW', 'acct'
+function Get-MiniOpts {
+    $o = @{}; foreach ($k in $script:miniKeys) { $o[$k] = $true }
+    if ($cfg.miniShow) { foreach ($k in $script:miniKeys) { $v = $cfg.miniShow.$k; if ($null -ne $v) { $o[$k] = [bool]$v } } }
+    $o
+}
+$script:miniWords = @{
+    en = @{ hint = 'Choose what the minimized view shows. Drag it to move it.'; pct5 = '5-hour usage (%)'; time5 = 'Time left in the 5-hour session'; frozen = 'The word "frozen" when the 5 hours are used up'; pctW = 'Weekly usage (%)'; timeW = 'Time left of the weekly limit'; acct = 'Account name (with several accounts)' }
+    no = @{ hint = 'Velg hva den minimerte visningen viser. Dra den for å flytte den.'; pct5 = 'Bruk i 5-timersøkta (%)'; time5 = 'Tid igjen av 5-timersøkta'; frozen = 'Ordet «fryst» når de 5 timene er brukt opp'; pctW = 'Bruk av ukekvoten (%)'; timeW = 'Tid igjen av ukekvoten'; acct = 'Kontonavn (ved flere kontoer)' }
+    sv = @{ hint = 'V' + [char]0xE4 + 'lj vad den minimerade vyn visar. Dra den f' + [char]0xF6 + 'r att flytta den.'; pct5 = 'Anv' + [char]0xE4 + 'ndning i 5-timmarssessionen (%)'; time5 = 'Tid kvar av 5-timmarssessionen'; frozen = 'Ordet "fryst" n' + [char]0xE4 + 'r de 5 timmarna är slut'; pctW = 'Anv' + [char]0xE4 + 'ndning av veckokvoten (%)'; timeW = 'Tid kvar av veckokvoten'; acct = 'Kontonamn (vid flera konton)' }
+    da = @{ hint = 'V' + [char]0xE6 + 'lg hvad den minimerede visning viser. Tr' + [char]0xE6 + 'k i den for at flytte den.'; pct5 = 'Forbrug i 5-timerssessionen (%)'; time5 = 'Tid tilbage af 5-timerssessionen'; frozen = 'Ordet "frosset" n' + [char]0xE5 + 'r de 5 timer er brugt'; pctW = 'Forbrug af ugekvoten (%)'; timeW = 'Tid tilbage af ugekvoten'; acct = 'Kontonavn (ved flere konti)' }
+}
+function Draw-MiniSettings {
+    $w = $script:miniWords[[string]$cfg.language]; if (-not $w) { $w = $script:miniWords.en }
+    $el.miniSetHint.Text = $w.hint
+    $el.miniSetList.Children.Clear()
+    $o = Get-MiniOpts
+    foreach ($k in $script:miniKeys) {
+        $cb = New-Object Windows.Controls.CheckBox
+        $cb.Content = $w[$k]; $cb.Tag = $k; $cb.IsChecked = $o[$k]; $cb.Margin = '0,3,0,3'; $cb.Foreground = Brush '#DDD'; $cb.FontSize = 13
+        $cb.Add_Click({
+            $n = [ordered]@{}; $cur = Get-MiniOpts; foreach ($x in $script:miniKeys) { $n[$x] = $cur[$x] }
+            $n[$this.Tag] = [bool]$this.IsChecked; $cfg.miniShow = $n; Save-Config; Refresh
+        })
+        [void]$el.miniSetList.Children.Add($cb)
     }
 }
 function Short-Account($a) { if ($a) { ($a -split '@')[0] } else { '' } }
@@ -710,6 +747,7 @@ function ModelName($m) {
         <StackPanel Orientation="Horizontal" DockPanel.Dock="Right" VerticalAlignment="Center">
           <TextBlock Name="tabNow" FontSize="13" Cursor="Hand"/>
           <TextBlock Name="tabHist" FontSize="13" Cursor="Hand" Margin="8,0,0,0"/>
+          <TextBlock Name="tabMini" FontSize="13" Cursor="Hand" Margin="8,0,0,0" Text="Mini"/>
           <TextBlock Name="minBtn" Text="–" Foreground="#777" FontSize="15" Cursor="Hand" Margin="12,-2,0,0" Background="Transparent"/>
         </StackPanel>
         <TextBlock Name="title" Foreground="#D97757" FontWeight="SemiBold" FontSize="16"/>
@@ -746,6 +784,10 @@ function ModelName($m) {
         <TextBlock Name="overHint" Foreground="#E0B050" FontSize="13" TextWrapping="Wrap" Margin="0,8,0,0" Visibility="Collapsed"/>
         </StackPanel>
       </StackPanel>
+      <StackPanel Name="miniSetPanel" Visibility="Collapsed">
+        <TextBlock Name="miniSetHint" Foreground="#999" FontSize="13" TextWrapping="Wrap" Margin="0,0,0,8"/>
+        <StackPanel Name="miniSetList"/>
+      </StackPanel>
       <StackPanel Name="histPanel" Visibility="Collapsed">
         <DockPanel>
           <StackPanel Name="rangePanel" Orientation="Horizontal" DockPanel.Dock="Right"/>
@@ -771,7 +813,7 @@ function ModelName($m) {
 '@
 $win = [Windows.Markup.XamlReader]::Load((New-Object System.Xml.XmlNodeReader $xaml))
 $el = @{}
-'root','title','tabNow','tabHist','nowPanel','histPanel','sLabel','sBar','sSub','wLabel','wBar','wSub','overHint','upd','accInfo','profBar','paceBox','pTitle','cPace','pText','cBox','cLabel','cTrack','cFore','cUsed','cSub','cFc','cStatus','moreBtn','moreBox','minBtn','mini','miniPanel',
+'root','title','tabNow','tabHist','tabMini','miniSetPanel','miniSetHint','miniSetList','nowPanel','histPanel','sLabel','sBar','sSub','wLabel','wBar','wSub','overHint','upd','accInfo','profBar','paceBox','pTitle','cPace','pText','cBox','cLabel','cTrack','cFore','cUsed','cSub','cFc','cStatus','moreBtn','moreBox','minBtn','mini','miniPanel',
 'rangePanel','hDaily','cDaily','hTotal','hToday','cToday','hTodayTotal','hModels','pModels','hProjects','pProjects','hSince' | ForEach-Object { $el[$_] = $win.FindName($_) }
 $win.Left = $cfg.left; $win.Top = $cfg.top; $win.Topmost = [bool]$cfg.topmost
 $script:last = $null
@@ -890,11 +932,14 @@ function Draw-History {
 }
 
 function Show-Tab($tab) {
-    $hist = $tab -eq 'history'
-    $el.nowPanel.Visibility = $(if ($hist) { 'Collapsed' } else { 'Visible' })
+    $hist = $tab -eq 'history'; $mini = $tab -eq 'mini'
+    $el.nowPanel.Visibility = $(if ($hist -or $mini) { 'Collapsed' } else { 'Visible' })
+    $el.miniSetPanel.Visibility = $(if ($mini) { 'Visible' } else { 'Collapsed' })
+    $el.tabMini.Foreground = Brush $(if ($mini) { '#EEE' } else { '#777' })
+    if ($mini) { Draw-MiniSettings }
     $el.histPanel.Visibility = $(if ($hist) { 'Visible' } else { 'Collapsed' })
     $el.root.Width = $(if ($hist) { $histWidth } else { 380 })
-    $el.tabNow.Foreground = Brush $(if ($hist) { '#777' } else { '#EEE' })
+    $el.tabNow.Foreground = Brush $(if ($hist -or $mini) { '#777' } else { '#EEE' })
     $el.tabHist.Foreground = Brush $(if ($hist) { '#EEE' } else { '#777' })
     if ($hist) { Draw-History }
     if ($cfg.tab -ne $tab) { $cfg.tab = $tab; Save-Config }
@@ -910,6 +955,7 @@ function Show-More {
 }
 $el.moreBtn.Add_MouseLeftButtonDown({ param($s, $e) $cfg.expanded = -not [bool]$cfg.expanded; Save-Config; Show-More; $e.Handled = $true })
 $el.tabHist.Add_MouseLeftButtonDown({ param($s, $e) Show-Tab 'history'; $e.Handled = $true })
+$el.tabMini.Add_MouseLeftButtonDown({ param($s, $e) Show-Tab 'mini'; $e.Handled = $true })
 
 function Get-UsedText($used, $limit) {
     if ($used -le $limit) { (T 'usedLeft') -f (Fmt $used), (Fmt ($limit - $used)) } else { (T 'usedOver') -f (Fmt $used), (Fmt ($used - $limit)) }
