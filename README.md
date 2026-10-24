@@ -138,3 +138,7 @@ The **Mini** tab (next to Now and History) lets you choose what the minimized vi
 ## Which account is in use
 
 A green dot marks the account that is signed in to Claude Code right now, on its chip at the top, on its line in the account list and in the minimized view (there the other accounts get a grey ring, and it does not depend on the account-name option on the Mini tab). The orange chip is the account whose figures the widget shows. When those differ (you pinned another account), a note under the chips says "Showing X. Claude Code is using Y." so you never mistake one for the other. The minimized view now shows the account name also when there is only one account (turn it off on the Mini tab).
+
+## Automatic updates (development)
+
+`sync-installed.ps1` copies the widget files to the installed copy in `%LOCALAPPDATA%\ClaudeUsage` and restarts the widget if it was running. Settings and history there are not touched. The git `post-commit` and `post-merge` hooks (in `.git/hooks`, so they are local to the development PC) run it, so the installed widget follows every commit. Run it by hand with `powershell -File sync-installed.ps1`. Users who only install the widget are not affected.
