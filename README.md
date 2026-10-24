@@ -134,3 +134,7 @@ Minimizing (the dash button) leaves a small box with the 5-hour %, the time to t
 
 The **Mini** tab (next to Now and History) lets you choose what the minimized view shows: 5-hour %, time left in the session, the word "frozen", weekly %, time left of the week and the account name. The choice is saved in config.json (`miniShow`). More than a day left of the week shows only whole days (`3d`).
 
+
+## Which account is in use
+
+A green dot marks the account that is signed in to Claude Code right now, on its chip at the top, on its line in the account list and, when the account name is shown, in the minimized view. The orange chip is the account whose figures the widget shows. When those differ (you pinned another account), a note under the chips says "Showing X. Claude Code is using Y." so you never mistake one for the other. The minimized view now shows the account name also when there is only one account (turn it off on the Mini tab).

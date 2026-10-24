@@ -464,7 +464,7 @@ function Load-History {
 # gets its own live figures, weekly log, history and limits, and every log line is counted for the account that
 # was signed in at that time (the Claude Code logs themselves are shared). Without accounts.csv nothing changes.
 $accPath = Join-Path $dir 'accounts.csv'
-$script:acct = $null; $script:timeline = @()
+$script:acct = $null; $script:signed = $null; $script:timeline = @()
 $script:limits = @{}
 if ($cfg.limits) { $cfg.limits.psobject.Properties | ForEach-Object { $script:limits[$_.Name] = $_.Value } }
 function Read-Timeline {
@@ -546,9 +546,11 @@ function Start-Login($email) {
 }
 function Select-Account {
     Sync-SignedIn
+    $script:signed = Get-SignedIn
     $script:timeline = Read-Timeline
     $names = Get-AccountNames
     if (-not $names.Count) { return }
+    if (-not $script:signed) { $script:signed = $script:timeline[-1].a }
     $want = if ($cfg.account -and $names -contains $cfg.account) { $cfg.account } else { $script:timeline[-1].a }
     if ($want -ne $script:acct) { Switch-Account $want }
 }
@@ -566,10 +568,10 @@ function Select-Items($all) {
 # while that account was signed in. A window whose reset time has passed has started over, so it shows no figure.
 # Words for the account lines and the minimized view, per language: 5-hour, week, reset, frozen, log in
 $script:accWords = @{
-    en = @{ s = '5h'; w = 'week'; reset = 'reset'; frozen = 'frozen' }
-    no = @{ s = '5t'; w = 'uke'; reset = 'nullstilt'; frozen = 'fryst' }
-    sv = @{ s = '5h'; w = 'vecka'; reset = 'nollst' + [char]0xE4 + 'llt'; frozen = 'fryst' }
-    da = @{ s = '5t'; w = 'uge'; reset = 'nulstillet'; frozen = 'frosset' }
+    en = @{ s = '5h'; w = 'week'; reset = 'reset'; frozen = 'frozen'; inuse = 'In use now in Claude Code'; same = 'In use now: {0}'; differ = 'Showing {0}. Claude Code is using {1}.' }
+    no = @{ s = '5t'; w = 'uke'; reset = 'nullstilt'; frozen = 'fryst'; inuse = 'I bruk n' + [char]0xE5 + ' i Claude Code'; same = 'I bruk n' + [char]0xE5 + ': {0}'; differ = 'Viser {0}. Claude Code bruker {1}.' }
+    sv = @{ s = '5h'; w = 'vecka'; reset = 'nollst' + [char]0xE4 + 'llt'; frozen = 'fryst'; inuse = 'Anv' + [char]0xE4 + 'nds nu i Claude Code'; same = 'Anv' + [char]0xE4 + 'nds nu: {0}'; differ = 'Visar {0}. Claude Code anv' + [char]0xE4 + 'nder {1}.' }
+    da = @{ s = '5t'; w = 'uge'; reset = 'nulstillet'; frozen = 'frosset'; inuse = 'I brug nu i Claude Code'; same = 'I brug nu: {0}'; differ = 'Viser {0}. Claude Code bruger {1}.' }
 }
 function Get-AccWords { $x = $script:accWords[[string]$cfg.language]; if ($x) { $x } else { $script:accWords.en } }
 function Get-AccountLines {
@@ -588,7 +590,7 @@ function Get-AccountLines {
             $when = if ($r.Date -eq (Get-Date).Date) { $r.ToString('HH:mm') } else { $r.ToString('ddd d. HH:mm') }
             $parts += ('{0} {1:0}% {2} {3}' -f $w[1], [double]$x.pct, [char]0x2192, $when)
         }
-        $mark = if ($n -eq $script:acct) { [char]0x25CF } else { [char]0x25CB }
+        $mark = if ($n -eq $script:signed) { [char]0x25CF } else { [char]0x25CB }
         '{0} {1}: {2}' -f $mark, (Short-Account $n), ($parts -join (' ' + [char]0x00B7 + ' '))
     }
 }
@@ -603,12 +605,23 @@ function Draw-Profiles {
         $b.CornerRadius = 10; $b.Padding = '9,3'; $b.Margin = '0,0,6,4'; $b.Cursor = $(if ($names.Count -gt 1) { 'Hand' } else { 'Arrow' })
         $b.Background = Brush $(if ($on) { '#D97757' } else { '#2C2C2C' })
         $tb = New-Object Windows.Controls.TextBlock
-        $tb.Text = $n; $tb.FontSize = 12; $tb.Foreground = Brush $(if ($on) { '#1E1E1E' } else { '#BBB' }); $tb.FontWeight = $(if ($on) { 'SemiBold' } else { 'Normal' })
+        $tb.FontSize = 12; $tb.Foreground = Brush $(if ($on) { '#1E1E1E' } else { '#BBB' }); $tb.FontWeight = $(if ($on) { 'SemiBold' } else { 'Normal' })
+        $used = ($n -eq $script:signed)
+        if ($used) { $dr = New-Object Windows.Documents.Run; $dr.Text = ([string][char]0x25CF) + ' '; $dr.Foreground = Brush $(if ($on) { '#1B7F3B' } else { '#4CC38A' }); [void]$tb.Inlines.Add($dr) }
+        $nr = New-Object Windows.Documents.Run; $nr.Text = $n; [void]$tb.Inlines.Add($nr)
         $b.Child = $tb; $b.Tag = $n
-        $b.ToolTip = $(if ($on) { $n } elseif ($cfg.language -eq 'no') { "Bytt til $n" } else { "Switch to $n" })
+        $b.ToolTip = $(if ($used) { (Get-AccWords).inuse } elseif ($on) { $n } elseif ($cfg.language -eq 'no') { "Bytt til $n" } else { "Switch to $n" })
         $b.Add_MouseLeftButtonDown({ param($s, $e) $e.Handled = $true; if ($s.Tag -ne $script:acct) { $cfg.account = $s.Tag; Save-Config; Refresh } })
         [void]$el.profBar.Children.Add($b)
     }
+    # Which account Claude Code is using right now, and a warning when the widget shows another one
+    if ($script:signed) {
+        $aw = Get-AccWords
+        $same = ($script:signed -eq $script:acct)
+        $el.signedNote.Text = $(if ($same) { $aw.same -f $script:signed } else { $aw.differ -f $script:acct, $script:signed })
+        $el.signedNote.Foreground = Brush $(if ($same) { '#4CC38A' } else { '#E5A24D' })
+        $el.signedNote.Visibility = 'Visible'
+    } else { $el.signedNote.Visibility = 'Collapsed' }
     # "+ Log in": one entry per known account (re-login with the email filled in) and one for another account
     $lb = New-Object Windows.Controls.Border
     $lb.CornerRadius = 10; $lb.Padding = '9,3'; $lb.Margin = '0,0,6,4'; $lb.Cursor = 'Hand'; $lb.Background = Brush '#2C2C2C'
@@ -666,11 +679,13 @@ function Draw-Mini($sp, $u, $wp) {
         $txt = ($a -join $dot)
         if ($b.Count) { $txt += $(if ($txt) { '  ' + [char]0x2502 + '  ' } else { '' }) + ($b -join $dot) }
         if (-not $txt) { $txt = [char]0x2026 }
-        if ($mo.acct -and $r.n -and $rows.Count -gt 1) { $txt = (Short-Account $r.n) + '  ' + $txt }
+        if ($mo.acct -and $r.n) { $txt = (Short-Account $r.n) + '  ' + $txt }
         $tb = New-Object Windows.Controls.TextBlock
-        $tb.Text = $txt; $tb.FontSize = $(if ($rows.Count -gt 1) { 14 } else { 16 }); $tb.FontWeight = 'SemiBold'
+        $tb.FontSize = $(if ($rows.Count -gt 1) { 14 } else { 16 }); $tb.FontWeight = 'SemiBold'
         $tb.Foreground = Brush $(if ($frozen -or $r.pct -gt 100 -or $r.wpct -ge 99.5) { '#E5484D' } else { '#D97757' })
-        if ($r.n) { $tb.ToolTip = $r.n }
+        if ($mo.acct -and $r.n -and $r.n -eq $script:signed) { $dr = New-Object Windows.Documents.Run; $dr.Text = ([string][char]0x25CF) + ' '; $dr.Foreground = Brush '#4CC38A'; [void]$tb.Inlines.Add($dr) }
+        $xr = New-Object Windows.Documents.Run; $xr.Text = $txt; [void]$tb.Inlines.Add($xr)
+        if ($r.n) { $tb.ToolTip = $(if ($r.n -eq $script:signed) { $r.n + ' (' + (Get-AccWords).inuse + ')' } else { $r.n }) }
         [void]$el.miniPanel.Children.Add($tb)
     }
 }
@@ -752,7 +767,8 @@ function ModelName($m) {
         </StackPanel>
         <TextBlock Name="title" Foreground="#D97757" FontWeight="SemiBold" FontSize="16"/>
       </DockPanel>
-      <WrapPanel Name="profBar" Margin="0,0,0,8" Visibility="Collapsed"/>
+      <WrapPanel Name="profBar" Margin="0,0,0,4" Visibility="Collapsed"/>
+      <TextBlock Name="signedNote" FontSize="12" Margin="0,0,0,8" TextWrapping="Wrap" Visibility="Collapsed"/>
       <StackPanel Name="nowPanel">
         <TextBlock Name="sLabel" Foreground="#EEE" FontSize="14"/>
         <ProgressBar Name="sBar" Height="8" Maximum="100" Margin="0,3,0,2" Background="#333" BorderThickness="0" Foreground="#D97757"/>
@@ -813,7 +829,7 @@ function ModelName($m) {
 '@
 $win = [Windows.Markup.XamlReader]::Load((New-Object System.Xml.XmlNodeReader $xaml))
 $el = @{}
-'root','title','tabNow','tabHist','tabMini','miniSetPanel','miniSetHint','miniSetList','nowPanel','histPanel','sLabel','sBar','sSub','wLabel','wBar','wSub','overHint','upd','accInfo','profBar','paceBox','pTitle','cPace','pText','cBox','cLabel','cTrack','cFore','cUsed','cSub','cFc','cStatus','moreBtn','moreBox','minBtn','mini','miniPanel',
+'root','title','tabNow','tabHist','tabMini','miniSetPanel','miniSetHint','miniSetList','nowPanel','histPanel','sLabel','sBar','sSub','wLabel','wBar','wSub','overHint','upd','accInfo','profBar','signedNote','paceBox','pTitle','cPace','pText','cBox','cLabel','cTrack','cFore','cUsed','cSub','cFc','cStatus','moreBtn','moreBox','minBtn','mini','miniPanel',
 'rangePanel','hDaily','cDaily','hTotal','hToday','cToday','hTodayTotal','hModels','pModels','hProjects','pProjects','hSince' | ForEach-Object { $el[$_] = $win.FindName($_) }
 $win.Left = $cfg.left; $win.Top = $cfg.top; $win.Topmost = [bool]$cfg.topmost
 $script:last = $null
