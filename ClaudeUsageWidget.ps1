@@ -683,7 +683,8 @@ function Draw-Mini($sp, $u, $wp) {
         $tb = New-Object Windows.Controls.TextBlock
         $tb.FontSize = $(if ($rows.Count -gt 1) { 14 } else { 16 }); $tb.FontWeight = 'SemiBold'
         $tb.Foreground = Brush $(if ($frozen -or $r.pct -gt 100 -or $r.wpct -ge 99.5) { '#E5484D' } else { '#D97757' })
-        if ($mo.acct -and $r.n -and $r.n -eq $script:signed) { $dr = New-Object Windows.Documents.Run; $dr.Text = ([string][char]0x25CF) + ' '; $dr.Foreground = Brush '#4CC38A'; [void]$tb.Inlines.Add($dr) }
+        # The account Claude Code is using now gets a green dot, whatever the Mini tab says about names; the others a grey ring
+        if ($r.n) { $isUsed = ($r.n -eq $script:signed); if ($isUsed -or $rows.Count -gt 1) { $dr = New-Object Windows.Documents.Run; $dr.Text = $(if ($isUsed) { [string][char]0x25CF } else { [string][char]0x25CB }) + ' '; $dr.Foreground = Brush $(if ($isUsed) { '#4CC38A' } else { '#777777' }); [void]$tb.Inlines.Add($dr) } }
         $xr = New-Object Windows.Documents.Run; $xr.Text = $txt; [void]$tb.Inlines.Add($xr)
         if ($r.n) { $tb.ToolTip = $(if ($r.n -eq $script:signed) { $r.n + ' (' + (Get-AccWords).inuse + ')' } else { $r.n }) }
         [void]$el.miniPanel.Children.Add($tb)
